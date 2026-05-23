@@ -1,4 +1,5 @@
-from main import get_health
+from src.core.system.router import get_health
+from src.core.models import SystemHealthResponse
 
 
 def test_health_check():
@@ -8,4 +9,5 @@ def test_health_check():
     response = get_health()
 
     # Assert
-    assert response == {"status": "ok"}
+    assert isinstance(response, SystemHealthResponse)
+    assert response.status == "ok"

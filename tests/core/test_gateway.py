@@ -1,7 +1,9 @@
 import pytest
+from fastapi import FastAPI
 from unittest.mock import AsyncMock, MagicMock, patch
 import pyairtouch
 
+from main import global_lifespan
 from src.core.gateway.pyairtouch import PyAirtouchGateway
 from src.core.models import (
     AcPowerState,
@@ -153,9 +155,6 @@ async def test_close_connection_shuts_down_all_pooled_connections(mock_connect):
 @patch("pyairtouch.connect")
 async def test_fastapi_lifespan_manages_connection_pool_lifecycle(mock_connect):
     # Arrange
-    from src.core.gateway.pyairtouch import pyairtouch_lifespan
-    from fastapi import FastAPI
-
     mock_airtouch = MagicMock()
     mock_airtouch.initialised = True
     mock_airtouch.init = AsyncMock(return_value=True)
@@ -165,7 +164,7 @@ async def test_fastapi_lifespan_manages_connection_pool_lifecycle(mock_connect):
     app = FastAPI()
 
     # Act
-    async with pyairtouch_lifespan(app):
+    async with global_lifespan(app):
         gateway = app.state.gateway
         assert gateway is not None
         await gateway._get_connection("192.168.1.50")

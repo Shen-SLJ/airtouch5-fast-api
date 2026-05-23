@@ -169,3 +169,8 @@ class ActionResponse(BaseModel):
 class DiscoveryResponse(BaseModel):
     """List of all discovered AirTouch devices on the local network."""
     airtouch_devices: List[DiscoveredDevice]
+
+
+class SystemHealthResponse(BaseModel):
+    """Health check response containing application runtime status."""
+    status: str

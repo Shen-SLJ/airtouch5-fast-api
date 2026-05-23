@@ -8,3 +8,13 @@ dependencies = [
     "fastapi[standard]>=0.136.1",
     "pyairtouch>=3.3.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+]

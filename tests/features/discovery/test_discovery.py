@@ -1,13 +1,15 @@
 import pytest
 from src.features.discovery.router import get_airtouches
+from src.features.discovery.service import DiscoveryService
 
 
 @pytest.mark.asyncio
 async def test_get_airtouches_success(mock_gateway):
     # Arrange
+    service = DiscoveryService(gateway=mock_gateway)
 
     # Act
-    result = await get_airtouches(gateway=mock_gateway)
+    result = await get_airtouches(service=service)
 
     # Assert
     devices = result.airtouch_devices

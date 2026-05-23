@@ -14,15 +14,17 @@ from src.features.ac.router import (
     AcFanSpeedRequest,
     AcTempRequest,
 )
+from src.features.ac.service import AcService
 from src.core.models import AcPowerControl, AcMode, AcFanSpeed, AirtouchConnectionError
 
 
 @pytest.mark.asyncio
 async def test_start_airtouch_success(mock_gateway):
     # Arrange
+    service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await start_airtouch(host="192.168.1.15", gateway=mock_gateway)
+    result = await start_airtouch(host="192.168.1.15", service=service)
 
     # Assert
     assert result.host == "192.168.1.15"
@@ -40,13 +42,16 @@ async def test_start_airtouch_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_start_airtouch_raises_connection_error_when_gateway_disconnected(mock_gateway):
+async def test_start_airtouch_raises_connection_error_when_gateway_disconnected(
+    mock_gateway,
+):
     # Arrange
     mock_gateway.connected_val = False
+    service = AcService(gateway=mock_gateway)
 
     # Act
     with pytest.raises(AirtouchConnectionError) as exception_info:
-        await start_airtouch(host="192.168.1.15", gateway=mock_gateway)
+        await start_airtouch(host="192.168.1.15", service=service)
 
     # Assert
     assert "Could not connect to Airtouch" in str(exception_info.value)
@@ -55,9 +60,10 @@ async def test_start_airtouch_raises_connection_error_when_gateway_disconnected(
 @pytest.mark.asyncio
 async def test_stop_airtouch_success(mock_gateway):
     # Arrange
+    service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await stop_airtouch(host="192.168.1.15", gateway=mock_gateway)
+    result = await stop_airtouch(host="192.168.1.15", service=service)
 
     # Assert
     assert result.host == "192.168.1.15"
@@ -71,9 +77,10 @@ async def test_stop_airtouch_success(mock_gateway):
 @pytest.mark.asyncio
 async def test_get_airtouch_status_success(mock_gateway):
     # Arrange
+    service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await get_airtouch_status(host="192.168.1.15", gateway=mock_gateway)
+    result = await get_airtouch_status(host="192.168.1.15", service=service)
 
     # Assert
     assert result.connected is True
@@ -84,13 +91,16 @@ async def test_get_airtouch_status_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_get_status_raises_connection_error_when_gateway_disconnected(mock_gateway):
+async def test_get_status_raises_connection_error_when_gateway_disconnected(
+    mock_gateway,
+):
     # Arrange
     mock_gateway.connected_val = False
+    service = AcService(gateway=mock_gateway)
 
     # Act
     with pytest.raises(AirtouchConnectionError) as exception_info:
-        await get_airtouch_status(host="192.168.1.15", gateway=mock_gateway)
+        await get_airtouch_status(host="192.168.1.15", service=service)
 
     # Assert
     assert "Could not connect to Airtouch" in str(exception_info.value)
@@ -99,9 +109,10 @@ async def test_get_status_raises_connection_error_when_gateway_disconnected(mock
 @pytest.mark.asyncio
 async def test_get_airtouch_capabilities_success(mock_gateway):
     # Arrange
+    service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await get_airtouch_capabilities(host="192.168.1.15", gateway=mock_gateway)
+    result = await get_airtouch_capabilities(host="192.168.1.15", service=service)
 
     # Assert
     assert result.connected is True
@@ -113,13 +124,14 @@ async def test_get_airtouch_capabilities_success(mock_gateway):
 async def test_set_ac_power_success(mock_gateway):
     # Arrange
     power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
+    service = AcService(gateway=mock_gateway)
 
     # Act
     result = await set_ac_power(
         host="192.168.1.15",
         air_conditioner_id=0,
         request=power_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert
@@ -136,10 +148,13 @@ async def test_set_ac_power_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_ac_power_raises_http_exception_on_gateway_failure(mock_gateway):
+async def test_set_ac_power_raises_http_exception_on_gateway_failure(
+    mock_gateway,
+):
     # Arrange
     mock_gateway.control_success = False
     power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
+    service = AcService(gateway=mock_gateway)
 
     # Act
     with pytest.raises(HTTPException) as exception_info:
@@ -147,7 +162,7 @@ async def test_set_ac_power_raises_http_exception_on_gateway_failure(mock_gatewa
             host="192.168.1.15",
             air_conditioner_id=0,
             request=power_request,
-            gateway=mock_gateway,
+            service=service,
         )
 
     # Assert
@@ -158,13 +173,14 @@ async def test_set_ac_power_raises_http_exception_on_gateway_failure(mock_gatewa
 async def test_set_ac_mode_success(mock_gateway):
     # Arrange
     mode_request = AcModeRequest(mode=AcMode.COOL)
+    service = AcService(gateway=mock_gateway)
 
     # Act
     result = await set_ac_mode(
         host="192.168.1.15",
         air_conditioner_id=0,
         request=mode_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert
@@ -180,13 +196,14 @@ async def test_set_ac_mode_success(mock_gateway):
 async def test_set_ac_fan_speed_success(mock_gateway):
     # Arrange
     fan_speed_request = AcFanSpeedRequest(fan_speed=AcFanSpeed.HIGH)
+    service = AcService(gateway=mock_gateway)
 
     # Act
     result = await set_ac_fan_speed(
         host="192.168.1.15",
         air_conditioner_id=0,
         request=fan_speed_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert
@@ -202,13 +219,14 @@ async def test_set_ac_fan_speed_success(mock_gateway):
 async def test_set_ac_temp_success(mock_gateway):
     # Arrange
     temp_request = AcTempRequest(temperature=24.0)
+    service = AcService(gateway=mock_gateway)
 
     # Act
     result = await set_ac_temp(
         host="192.168.1.15",
         air_conditioner_id=0,
         request=temp_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert

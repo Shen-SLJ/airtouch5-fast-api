@@ -1,24 +1,20 @@
 from fastapi import APIRouter, Depends
-from src.core.gateway import AirtouchGateway, get_gateway
 from src.core.models import DiscoveryResponse
+from src.features.discovery.service import DiscoveryService
 
 router = APIRouter(prefix="/api/v1/airtouches", tags=["Discovery"])
 
 
 @router.get("", response_model=DiscoveryResponse)
 async def get_airtouches(
-    gateway: AirtouchGateway = Depends(get_gateway),
+    service: DiscoveryService = Depends(),
 ) -> DiscoveryResponse:
     """Discovers all AirTouch consoles on the local network.
 
     Args:
-        gateway: The injected hardware abstraction gateway.
+        service: The injected discovery service.
 
     Returns:
         DiscoveryResponse: Model containing details of all discovered devices.
     """
-    discovered_airtouches = await gateway.discover_devices()
-
-    return DiscoveryResponse(
-        airtouch_devices=[device for device in discovered_airtouches]
-    )
+    return await service.discover_devices()

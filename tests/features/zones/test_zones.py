@@ -8,6 +8,7 @@ from src.features.zones.router import (
     ZoneTempRequest,
     ZoneDamperRequest,
 )
+from src.features.zones.service import ZoneService
 from src.core.models import ZonePowerState
 
 
@@ -15,6 +16,7 @@ from src.core.models import ZonePowerState
 async def test_set_zone_power_success(mock_gateway):
     # Arrange
     power_request = ZonePowerRequest(power=ZonePowerState.ON)
+    service = ZoneService(gateway=mock_gateway)
 
     # Act
     result = await set_zone_power(
@@ -22,7 +24,7 @@ async def test_set_zone_power_success(mock_gateway):
         air_conditioner_id=0,
         zone_id=1,
         request=power_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert
@@ -44,6 +46,7 @@ async def test_set_zone_power_raises_http_exception_on_gateway_failure(mock_gate
     # Arrange
     mock_gateway.control_success = False
     power_request = ZonePowerRequest(power=ZonePowerState.ON)
+    service = ZoneService(gateway=mock_gateway)
 
     # Act
     with pytest.raises(HTTPException) as exception_info:
@@ -52,7 +55,7 @@ async def test_set_zone_power_raises_http_exception_on_gateway_failure(mock_gate
             air_conditioner_id=0,
             zone_id=1,
             request=power_request,
-            gateway=mock_gateway,
+            service=service,
         )
 
     # Assert
@@ -64,6 +67,7 @@ async def test_set_zone_power_raises_http_exception_on_gateway_failure(mock_gate
 async def test_set_zone_temp_success(mock_gateway):
     # Arrange
     temperature_request = ZoneTempRequest(temperature=23.0)
+    service = ZoneService(gateway=mock_gateway)
 
     # Act
     result = await set_zone_temp(
@@ -71,7 +75,7 @@ async def test_set_zone_temp_success(mock_gateway):
         air_conditioner_id=0,
         zone_id=1,
         request=temperature_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert
@@ -89,10 +93,13 @@ async def test_set_zone_temp_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(mock_gateway):
+async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(
+    mock_gateway,
+):
     # Arrange
     mock_gateway.control_success = False
     temperature_request = ZoneTempRequest(temperature=23.0)
+    service = ZoneService(gateway=mock_gateway)
 
     # Act
     with pytest.raises(HTTPException) as exception_info:
@@ -101,7 +108,7 @@ async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(moc
             air_conditioner_id=0,
             zone_id=1,
             request=temperature_request,
-            gateway=mock_gateway,
+            service=service,
         )
 
     # Assert
@@ -112,6 +119,7 @@ async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(moc
 async def test_set_zone_damper_success(mock_gateway):
     # Arrange
     damper_request = ZoneDamperRequest(damper_percentage=75)
+    service = ZoneService(gateway=mock_gateway)
 
     # Act
     result = await set_zone_damper(
@@ -119,7 +127,7 @@ async def test_set_zone_damper_success(mock_gateway):
         air_conditioner_id=0,
         zone_id=2,
         request=damper_request,
-        gateway=mock_gateway,
+        service=service,
     )
 
     # Assert
@@ -141,6 +149,7 @@ async def test_set_zone_damper_raises_http_exception_on_gateway_failure(mock_gat
     # Arrange
     mock_gateway.control_success = False
     damper_request = ZoneDamperRequest(damper_percentage=75)
+    service = ZoneService(gateway=mock_gateway)
 
     # Act
     with pytest.raises(HTTPException) as exception_info:
@@ -149,7 +158,7 @@ async def test_set_zone_damper_raises_http_exception_on_gateway_failure(mock_gat
             air_conditioner_id=0,
             zone_id=2,
             request=damper_request,
-            gateway=mock_gateway,
+            service=service,
         )
 
     # Assert

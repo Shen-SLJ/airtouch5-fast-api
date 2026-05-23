@@ -9,6 +9,14 @@ router = APIRouter(prefix="/api/v1/airtouches", tags=["Discovery"])
 async def get_airtouches(
     gateway: AirtouchGateway = Depends(get_gateway),
 ) -> DiscoveryResponse:
+    """Discovers all AirTouch consoles on the local network.
+
+    Args:
+        gateway: The injected hardware abstraction gateway.
+
+    Returns:
+        DiscoveryResponse: Model containing details of all discovered devices.
+    """
     discovered_airtouches = await gateway.discover_devices()
 
     return DiscoveryResponse(

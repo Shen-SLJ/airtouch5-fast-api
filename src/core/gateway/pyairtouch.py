@@ -1,4 +1,6 @@
 import pyairtouch
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from typing import List, Optional, Type, TypeVar
 from enum import Enum
 
@@ -22,27 +24,75 @@ from src.core.models import (
     AcPowerActionResult,
 )
 
-PORT = 9005
-MODEL = pyairtouch.AirTouchModel.AIRTOUCH_5
+DEFAULT_PORT = 9005
+DEFAULT_AIRTOUCH_MODEL = pyairtouch.AirTouchModel.AIRTOUCH_5
 
-EnumType = TypeVar("EnumType", bound=Enum)
+EnumGenericType = TypeVar("EnumGenericType", bound=Enum)
+
+
+@asynccontextmanager
+async def pyairtouch_lifespan(app: FastAPI):
+    """Manages the lifetime of the AirtouchConnectionPool and PyAirtouchGateway for FastAPI."""
+    connection_pool = AirtouchConnectionPool()
+    gateway = PyAirtouchGateway(connection_pool=connection_pool)
+    app.state.gateway = gateway
+
+    yield
+
+    await connection_pool.close_all()
+
+
+class AirtouchConnectionPool:
+    """Manages a cached pool of active socket connections to AirTouch 5 consoles.
+
+    Ensures that socket connections are pooled by host, reused across multiple API requests
+    to avoid reconnection overhead, and cleanly shut down when the application stops.
+    """
+
+    def __init__(self) -> None:
+        self._connections: dict[str, pyairtouch.AirTouch] = {}
+
+    async def get_connection(self, host: str) -> pyairtouch.AirTouch:
+        if host in self._connections:
+            connection = self._connections[host]
+            if connection.initialised:
+                return connection
+
+        airtouch_instance = pyairtouch.connect(
+            model=DEFAULT_AIRTOUCH_MODEL, host=host, port=DEFAULT_PORT
+        )
+        is_connected = await airtouch_instance.init()
+        if not is_connected:
+            raise AirtouchConnectionError(host)
+
+        self._connections[host] = airtouch_instance
+        return airtouch_instance
+
+    async def close_all(self) -> None:
+        for connection in self._connections.values():
+            await connection.shutdown()
+        self._connections.clear()
 
 
 class PyAirtouchGateway(AirtouchGateway):
-    def __init__(self) -> None:
-        self._airtouch_instance: Optional[pyairtouch.AirTouch] = None
+    """Concrete implementation of AirtouchGateway utilizing the pyairtouch library.
 
-    def _map_enum(
-        self, source_enum: Optional[Enum], target_class: Type[EnumType]
-    ) -> EnumType:
-        if source_enum is None:
-            return list(target_class)[0]
+    Coordinates device discovery, status mappings, and control commands using a stateless
+    connection pool architecture.
+    """
 
-        enum_name = getattr(source_enum, "name", str(source_enum))
-        try:
-            return target_class(enum_name)
-        except ValueError:
-            return list(target_class)[0]
+    def __init__(
+        self, connection_pool: Optional[AirtouchConnectionPool] = None
+    ) -> None:
+        self._connection_pool = connection_pool or AirtouchConnectionPool()
+
+    async def discover_devices(self) -> List[DiscoveredDevice]:
+        devices = await pyairtouch.discover()
+
+        return [
+            self._map_discovered_device(discovered_device)
+            for discovered_device in devices
+        ]
 
     def _map_discovered_device(
         self, discovered_device: pyairtouch.DiscoveredAirTouch
@@ -59,19 +109,24 @@ class PyAirtouchGateway(AirtouchGateway):
             host=discovered_device.host,
         )
 
-    def _map_zone_status(self, zone: pyairtouch.Zone) -> ZoneStatus:
-        return ZoneStatus(
-            zone_id=zone.zone_id,
-            name=zone.name,
-            power_state=self._map_enum(zone.power_state, ZonePowerState),
-            control_method=self._map_enum(zone.control_method, ZoneControlMethod),
-            current_temperature=zone.current_temperature,
-            target_temperature=zone.target_temperature,
-            current_damper_percentage=zone.current_damper_percentage,
-            spill_active=zone.spill_active,
-            sensor_battery_status=self._map_enum(
-                zone.sensor_battery_status, SensorBatteryStatus
+    async def get_status(self, host: str) -> AirtouchStatus:
+        airtouch_instance = await self._get_connection(host)
+
+        air_conditioner_statuses = [
+            self._map_air_conditioner_status(air_conditioner)
+            for air_conditioner in airtouch_instance.air_conditioners
+        ]
+
+        return AirtouchStatus(
+            model=str(
+                airtouch_instance.model.name
+                if hasattr(airtouch_instance.model, "name")
+                else airtouch_instance.model
             ),
+            host=airtouch_instance.host,
+            port=DEFAULT_PORT,
+            connected=True,
+            air_conditioners=air_conditioner_statuses,
         )
 
     def _map_air_conditioner_status(
@@ -102,6 +157,53 @@ class PyAirtouchGateway(AirtouchGateway):
             zones=zone_statuses,
         )
 
+    def _map_zone_status(self, zone: pyairtouch.Zone) -> ZoneStatus:
+        return ZoneStatus(
+            zone_id=zone.zone_id,
+            name=zone.name,
+            power_state=self._map_enum(zone.power_state, ZonePowerState),
+            control_method=self._map_enum(zone.control_method, ZoneControlMethod),
+            current_temperature=zone.current_temperature,
+            target_temperature=zone.target_temperature,
+            current_damper_percentage=zone.current_damper_percentage,
+            spill_active=zone.spill_active,
+            sensor_battery_status=self._map_enum(
+                zone.sensor_battery_status, SensorBatteryStatus
+            ),
+        )
+
+    def _map_enum(
+        self, source_enum: Optional[Enum], target_class: Type[EnumGenericType]
+    ) -> EnumGenericType:
+        if source_enum is None:
+            return list(target_class)[0]
+
+        enum_name = getattr(source_enum, "name", str(source_enum))
+        try:
+            return target_class(enum_name)
+        except ValueError:
+            return list(target_class)[0]
+
+    async def get_capabilities(self, host: str) -> AirtouchCapabilities:
+        airtouch_instance = await self._get_connection(host)
+
+        air_conditioner_capabilities = [
+            self._map_air_conditioner_capabilities(air_conditioner)
+            for air_conditioner in airtouch_instance.air_conditioners
+        ]
+
+        return AirtouchCapabilities(
+            model=str(
+                airtouch_instance.model.name
+                if hasattr(airtouch_instance.model, "name")
+                else airtouch_instance.model
+            ),
+            host=airtouch_instance.host,
+            port=DEFAULT_PORT,
+            connected=True,
+            air_conditioners=air_conditioner_capabilities,
+        )
+
     def _map_air_conditioner_capabilities(
         self, air_conditioner: pyairtouch.AirConditioner
     ) -> AcCapabilities:
@@ -124,100 +226,6 @@ class PyAirtouchGateway(AirtouchGateway):
             ],
         )
 
-    async def _get_connection(self, host: str) -> pyairtouch.AirTouch:
-        if self._airtouch_instance is not None:
-            if (
-                self._airtouch_instance.initialised
-                and self._airtouch_instance.host == host
-            ):
-                return self._airtouch_instance
-
-        airtouch_instance = pyairtouch.connect(model=MODEL, host=host, port=PORT)
-        is_connected = await airtouch_instance.init()
-        if not is_connected:
-            raise AirtouchConnectionError(host)
-
-        self._airtouch_instance = airtouch_instance
-
-        return airtouch_instance
-
-    async def _get_air_conditioner(
-        self, host: str, air_conditioner_id: int
-    ) -> Optional[pyairtouch.AirConditioner]:
-        airtouch_instance = await self._get_connection(host)
-
-        for air_conditioner in airtouch_instance.air_conditioners:
-            if air_conditioner.ac_id == air_conditioner_id:
-                return air_conditioner
-
-        return None
-
-    async def _get_zone(
-        self, host: str, air_conditioner_id: int, zone_id: int
-    ) -> Optional[pyairtouch.Zone]:
-        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
-        if air_conditioner is None:
-            return None
-
-        for zone in air_conditioner.zones:
-            if zone.zone_id == zone_id:
-                return zone
-
-        return None
-
-    async def close_connection(self) -> None:
-        if self._airtouch_instance is not None:
-            await self._airtouch_instance.shutdown()
-            self._airtouch_instance = None
-
-    async def discover_devices(self) -> List[DiscoveredDevice]:
-        devices = await pyairtouch.discover()
-
-        return [
-            self._map_discovered_device(discovered_device)
-            for discovered_device in devices
-        ]
-
-    async def get_status(self, host: str) -> AirtouchStatus:
-        airtouch_instance = await self._get_connection(host)
-
-        air_conditioner_statuses = [
-            self._map_air_conditioner_status(air_conditioner)
-            for air_conditioner in airtouch_instance.air_conditioners
-        ]
-
-        return AirtouchStatus(
-            model=str(
-                airtouch_instance.model.name
-                if hasattr(airtouch_instance.model, "name")
-                else airtouch_instance.model
-            ),
-            host=airtouch_instance.host,
-            port=PORT,
-            connected=True,
-            air_conditioners=air_conditioner_statuses,
-        )
-
-    async def get_capabilities(self, host: str) -> AirtouchCapabilities:
-        airtouch_instance = await self._get_connection(host)
-
-        air_conditioner_capabilities = [
-            self._map_air_conditioner_capabilities(air_conditioner)
-            for air_conditioner in airtouch_instance.air_conditioners
-        ]
-
-        return AirtouchCapabilities(
-            model=str(
-                airtouch_instance.model.name
-                if hasattr(airtouch_instance.model, "name")
-                else airtouch_instance.model
-            ),
-            host=airtouch_instance.host,
-            port=PORT,
-            connected=True,
-            air_conditioners=air_conditioner_capabilities,
-        )
-
     async def set_ac_power(
         self, host: str, air_conditioner_id: int, power_control: AcPowerControl
     ) -> bool:
@@ -231,6 +239,17 @@ class PyAirtouchGateway(AirtouchGateway):
             return True
 
         return False
+
+    async def _get_air_conditioner(
+        self, host: str, air_conditioner_id: int
+    ) -> Optional[pyairtouch.AirConditioner]:
+        airtouch_instance = await self._get_connection(host)
+
+        for air_conditioner in airtouch_instance.air_conditioners:
+            if air_conditioner.ac_id == air_conditioner_id:
+                return air_conditioner
+
+        return None
 
     async def set_all_ac_power(
         self, host: str, power_control: AcPowerControl
@@ -317,6 +336,19 @@ class PyAirtouchGateway(AirtouchGateway):
 
         return False
 
+    async def _get_zone(
+        self, host: str, air_conditioner_id: int, zone_id: int
+    ) -> Optional[pyairtouch.Zone]:
+        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
+        if air_conditioner is None:
+            return None
+
+        for zone in air_conditioner.zones:
+            if zone.zone_id == zone_id:
+                return zone
+
+        return None
+
     async def set_zone_temp(
         self, host: str, air_conditioner_id: int, zone_id: int, temperature: float
     ) -> bool:
@@ -342,3 +374,9 @@ class PyAirtouchGateway(AirtouchGateway):
             return True
 
         return False
+
+    async def close_connection(self) -> None:
+        await self._connection_pool.close_all()
+
+    async def _get_connection(self, host: str) -> pyairtouch.AirTouch:
+        return await self._connection_pool.get_connection(host)

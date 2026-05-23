@@ -8,14 +8,17 @@ router = APIRouter(prefix="/api/v1/airtouches", tags=["Zone Control"])
 
 
 class ZonePowerRequest(BaseModel):
+    """API request payload schema for changing Zone power state."""
     power: ZonePowerState
 
 
 class ZoneTempRequest(BaseModel):
+    """API request payload schema for changing Zone target temperature."""
     temperature: float = Field(..., description="Target temperature for the zone.")
 
 
 class ZoneDamperRequest(BaseModel):
+    """API request payload schema for changing Zone damper opening percentage."""
     damper_percentage: int = Field(
         ..., ge=0, le=100, description="Damper opening percentage (0-100)."
     )
@@ -32,6 +35,21 @@ async def set_zone_power(
     request: ZonePowerRequest,
     gateway: AirtouchGateway = Depends(get_gateway),
 ) -> ActionResponse:
+    """Sets the operational power state (e.g., ON, OFF, TURBO) of a specific zone.
+
+    Args:
+        host: IP address or hostname of the AirTouch console.
+        air_conditioner_id: ID of the parent Air Conditioner unit.
+        zone_id: ID of the zone to control.
+        request: Request body containing the desired ZonePowerState.
+        gateway: The injected hardware abstraction gateway.
+
+    Returns:
+        ActionResponse: A status confirmation of the command execution.
+
+    Raises:
+        HTTPException: 400 Bad Request if the zone/AC is invalid or state is unsupported.
+    """
     is_successful = await gateway.set_zone_power(
         host, air_conditioner_id, zone_id, request.power
     )
@@ -57,6 +75,21 @@ async def set_zone_temp(
     request: ZoneTempRequest,
     gateway: AirtouchGateway = Depends(get_gateway),
 ) -> ActionResponse:
+    """Sets the target temperature of a specific temperature-controlled zone.
+
+    Args:
+        host: IP address or hostname of the AirTouch console.
+        air_conditioner_id: ID of the parent Air Conditioner unit.
+        zone_id: ID of the zone to control.
+        request: Request body containing the target temperature value.
+        gateway: The injected hardware abstraction gateway.
+
+    Returns:
+        ActionResponse: A status confirmation of the command execution.
+
+    Raises:
+        HTTPException: 400 Bad Request if the zone/AC is invalid or not in temperature control mode.
+    """
     is_successful = await gateway.set_zone_temp(
         host, air_conditioner_id, zone_id, request.temperature
     )
@@ -83,6 +116,21 @@ async def set_zone_damper(
     request: ZoneDamperRequest,
     gateway: AirtouchGateway = Depends(get_gateway),
 ) -> ActionResponse:
+    """Sets the damper opening percentage of a specific damper-controlled zone.
+
+    Args:
+        host: IP address or hostname of the AirTouch console.
+        air_conditioner_id: ID of the parent Air Conditioner unit.
+        zone_id: ID of the zone to control.
+        request: Request body containing the damper opening percentage (0-100).
+        gateway: The injected hardware abstraction gateway.
+
+    Returns:
+        ActionResponse: A status confirmation of the command execution.
+
+    Raises:
+        HTTPException: 400 Bad Request if the zone/AC is invalid or percentage is out of range.
+    """
     is_successful = await gateway.set_zone_damper(
         host, air_conditioner_id, zone_id, request.damper_percentage
     )

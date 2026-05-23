@@ -13,7 +13,6 @@ from src.core.models import ZonePowerState
 
 @pytest.mark.asyncio
 async def test_set_zone_power_success(mock_gateway):
-    """Verify that set_zone_power invokes gateway.set_zone_power with correct arguments."""
     # Arrange
     power_request = ZonePowerRequest(power=ZonePowerState.ON)
 
@@ -41,13 +40,12 @@ async def test_set_zone_power_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_power_failed(mock_gateway):
-    """Verify set_zone_power raises 400 when gateway operation fails."""
+async def test_set_zone_power_raises_http_exception_on_gateway_failure(mock_gateway):
     # Arrange
     mock_gateway.control_success = False
     power_request = ZonePowerRequest(power=ZonePowerState.ON)
 
-    # Act & Assert
+    # Act
     with pytest.raises(HTTPException) as exception_info:
         await set_zone_power(
             host="192.168.1.15",
@@ -57,13 +55,13 @@ async def test_set_zone_power_failed(mock_gateway):
             gateway=mock_gateway,
         )
 
+    # Assert
     assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
     assert "Failed to set zone" in exception_info.value.detail
 
 
 @pytest.mark.asyncio
 async def test_set_zone_temp_success(mock_gateway):
-    """Verify that set_zone_temp invokes gateway.set_zone_temp with correct arguments."""
     # Arrange
     temperature_request = ZoneTempRequest(temperature=23.0)
 
@@ -91,13 +89,12 @@ async def test_set_zone_temp_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_temp_failed(mock_gateway):
-    """Verify set_zone_temp raises 400 when gateway operation fails."""
+async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(mock_gateway):
     # Arrange
     mock_gateway.control_success = False
     temperature_request = ZoneTempRequest(temperature=23.0)
 
-    # Act & Assert
+    # Act
     with pytest.raises(HTTPException) as exception_info:
         await set_zone_temp(
             host="192.168.1.15",
@@ -107,12 +104,12 @@ async def test_set_zone_temp_failed(mock_gateway):
             gateway=mock_gateway,
         )
 
+    # Assert
     assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.asyncio
 async def test_set_zone_damper_success(mock_gateway):
-    """Verify that set_zone_damper invokes gateway.set_zone_damper with correct arguments."""
     # Arrange
     damper_request = ZoneDamperRequest(damper_percentage=75)
 
@@ -140,13 +137,12 @@ async def test_set_zone_damper_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_damper_failed(mock_gateway):
-    """Verify set_zone_damper raises 400 when gateway operation fails."""
+async def test_set_zone_damper_raises_http_exception_on_gateway_failure(mock_gateway):
     # Arrange
     mock_gateway.control_success = False
     damper_request = ZoneDamperRequest(damper_percentage=75)
 
-    # Act & Assert
+    # Act
     with pytest.raises(HTTPException) as exception_info:
         await set_zone_damper(
             host="192.168.1.15",
@@ -156,4 +152,5 @@ async def test_set_zone_damper_failed(mock_gateway):
             gateway=mock_gateway,
         )
 
+    # Assert
     assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST

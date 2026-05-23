@@ -19,9 +19,7 @@ from src.core.models import AcPowerControl, AcMode, AcFanSpeed, AirtouchConnecti
 
 @pytest.mark.asyncio
 async def test_start_airtouch_success(mock_gateway):
-    """Verify starting all ACs sets power to TURN_ON on all ACs and returns status."""
     # Arrange
-    # Gateway setup handled by mock_gateway fixture
 
     # Act
     result = await start_airtouch(host="192.168.1.15", gateway=mock_gateway)
@@ -34,7 +32,6 @@ async def test_start_airtouch_success(mock_gateway):
     assert result.air_conditioners[0].power_control == AcPowerControl.TURN_ON
     assert result.air_conditioners[0].applied is True
 
-    # Assert gateway calls
     assert (
         "set_all_ac_power",
         {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_ON},
@@ -43,23 +40,21 @@ async def test_start_airtouch_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_start_airtouch_disconnected(mock_gateway):
-    """Verify start_airtouch raises AirtouchConnectionError if the AirTouch connection is lost."""
+async def test_start_airtouch_raises_connection_error_when_gateway_disconnected(mock_gateway):
     # Arrange
     mock_gateway.connected_val = False
 
-    # Act & Assert
+    # Act
     with pytest.raises(AirtouchConnectionError) as exception_info:
         await start_airtouch(host="192.168.1.15", gateway=mock_gateway)
 
+    # Assert
     assert "Could not connect to Airtouch" in str(exception_info.value)
 
 
 @pytest.mark.asyncio
 async def test_stop_airtouch_success(mock_gateway):
-    """Verify stopping all ACs sets power to TURN_OFF on all ACs."""
     # Arrange
-    # Gateway setup handled by mock_gateway fixture
 
     # Act
     result = await stop_airtouch(host="192.168.1.15", gateway=mock_gateway)
@@ -75,9 +70,7 @@ async def test_stop_airtouch_success(mock_gateway):
 
 @pytest.mark.asyncio
 async def test_get_airtouch_status_success(mock_gateway):
-    """Verify get_airtouch_status returns full status when connection is successful."""
     # Arrange
-    # Gateway setup handled by mock_gateway fixture
 
     # Act
     result = await get_airtouch_status(host="192.168.1.15", gateway=mock_gateway)
@@ -91,23 +84,21 @@ async def test_get_airtouch_status_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_get_airtouch_status_disconnected(mock_gateway):
-    """Verify get_airtouch_status raises AirtouchConnectionError when connection fails."""
+async def test_get_status_raises_connection_error_when_gateway_disconnected(mock_gateway):
     # Arrange
     mock_gateway.connected_val = False
 
-    # Act & Assert
+    # Act
     with pytest.raises(AirtouchConnectionError) as exception_info:
         await get_airtouch_status(host="192.168.1.15", gateway=mock_gateway)
 
+    # Assert
     assert "Could not connect to Airtouch" in str(exception_info.value)
 
 
 @pytest.mark.asyncio
 async def test_get_airtouch_capabilities_success(mock_gateway):
-    """Verify get_airtouch_capabilities returns full caps when connection is successful."""
     # Arrange
-    # Gateway setup handled by mock_gateway fixture
 
     # Act
     result = await get_airtouch_capabilities(host="192.168.1.15", gateway=mock_gateway)
@@ -120,7 +111,6 @@ async def test_get_airtouch_capabilities_success(mock_gateway):
 
 @pytest.mark.asyncio
 async def test_set_ac_power_success(mock_gateway):
-    """Verify set_ac_power sets power state successfully."""
     # Arrange
     power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
 
@@ -146,13 +136,12 @@ async def test_set_ac_power_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_ac_power_failed(mock_gateway):
-    """Verify set_ac_power raises 400 when gateway operation fails."""
+async def test_set_ac_power_raises_http_exception_on_gateway_failure(mock_gateway):
     # Arrange
     mock_gateway.control_success = False
     power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
 
-    # Act & Assert
+    # Act
     with pytest.raises(HTTPException) as exception_info:
         await set_ac_power(
             host="192.168.1.15",
@@ -161,12 +150,12 @@ async def test_set_ac_power_failed(mock_gateway):
             gateway=mock_gateway,
         )
 
+    # Assert
     assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
 
 
 @pytest.mark.asyncio
 async def test_set_ac_mode_success(mock_gateway):
-    """Verify set_ac_mode sets operational mode successfully."""
     # Arrange
     mode_request = AcModeRequest(mode=AcMode.COOL)
 
@@ -189,7 +178,6 @@ async def test_set_ac_mode_success(mock_gateway):
 
 @pytest.mark.asyncio
 async def test_set_ac_fan_speed_success(mock_gateway):
-    """Verify set_ac_fan_speed sets fan speed successfully."""
     # Arrange
     fan_speed_request = AcFanSpeedRequest(fan_speed=AcFanSpeed.HIGH)
 
@@ -212,7 +200,6 @@ async def test_set_ac_fan_speed_success(mock_gateway):
 
 @pytest.mark.asyncio
 async def test_set_ac_temp_success(mock_gateway):
-    """Verify set_ac_temp sets target temperature successfully."""
     # Arrange
     temp_request = AcTempRequest(temperature=24.0)
 

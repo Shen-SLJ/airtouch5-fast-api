@@ -3,12 +3,14 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class AirtouchConnectionError(Exception):
+    """Exception raised when connection to the AirTouch console fails."""
     def __init__(self, host: str) -> None:
         super().__init__(f"Could not connect to Airtouch console at {host}")
         self.host = host
 
 
 class AcPowerControl(StrEnum):
+    """Supported control commands for Air Conditioner power states."""
     TOGGLE = "TOGGLE"
     TURN_OFF = "TURN_OFF"
     TURN_ON = "TURN_ON"
@@ -17,6 +19,7 @@ class AcPowerControl(StrEnum):
 
 
 class AcPowerState(StrEnum):
+    """Possible runtime power states of an Air Conditioner unit."""
     OFF = "OFF"
     OFF_AWAY = "OFF_AWAY"
     OFF_FORCED = "OFF_FORCED"
@@ -26,6 +29,7 @@ class AcPowerState(StrEnum):
 
 
 class AcMode(StrEnum):
+    """Supported operational modes for an Air Conditioner unit."""
     AUTO = "AUTO"
     HEAT = "HEAT"
     DRY = "DRY"
@@ -34,6 +38,7 @@ class AcMode(StrEnum):
 
 
 class AcFanSpeed(StrEnum):
+    """Supported fan speed settings for an Air Conditioner unit."""
     AUTO = "AUTO"
     QUIET = "QUIET"
     LOW = "LOW"
@@ -45,28 +50,33 @@ class AcFanSpeed(StrEnum):
 
 
 class AcSpillState(StrEnum):
+    """Spill or bypass status for Air Conditioner zones."""
     NONE = "NONE"
     SPILL = "SPILL"
     BYPASS = "BYPASS"
 
 
 class ZonePowerState(StrEnum):
+    """Supported power and control states for a specific zone."""
     OFF = "OFF"
     ON = "ON"
     TURBO = "TURBO"
 
 
 class ZoneControlMethod(StrEnum):
+    """Supported control methods (damper vs temperature) for a zone."""
     DAMPER = "DAMPER"
     TEMPERATURE = "TEMPERATURE"
 
 
 class SensorBatteryStatus(StrEnum):
+    """Battery charge status of zone-assigned wireless sensors."""
     NORMAL = "NORMAL"
     LOW = "LOW"
 
 
 class DiscoveredDevice(BaseModel):
+    """Details of an AirTouch console discovered on the local network."""
     name: str
     model: str
     id: str
@@ -75,6 +85,7 @@ class DiscoveredDevice(BaseModel):
 
 
 class ZoneStatus(BaseModel):
+    """Comprehensive runtime status of a single zone."""
     zone_id: int
     name: str
     power_state: ZonePowerState
@@ -87,6 +98,7 @@ class ZoneStatus(BaseModel):
 
 
 class AcStatus(BaseModel):
+    """Detailed runtime status of a single Air Conditioner unit, including its zones."""
     ac_id: int
     name: str
     power_state: AcPowerState
@@ -102,6 +114,7 @@ class AcStatus(BaseModel):
 
 
 class AirtouchStatus(BaseModel):
+    """Overall status response for an AirTouch console, containing all AC units."""
     model: str
     host: str
     port: int
@@ -110,6 +123,7 @@ class AirtouchStatus(BaseModel):
 
 
 class AcCapabilities(BaseModel):
+    """Hardware capabilities and supported controls of a single Air Conditioner unit."""
     ac_id: int
     name: str
     min_target_temperature: float
@@ -121,6 +135,7 @@ class AcCapabilities(BaseModel):
 
 
 class AirtouchCapabilities(BaseModel):
+    """Overall capabilities response for an AirTouch console and its AC units."""
     model: str
     host: str
     port: int
@@ -129,6 +144,7 @@ class AirtouchCapabilities(BaseModel):
 
 
 class AcPowerActionResult(BaseModel):
+    """Result details of a power state control request on a single AC unit."""
     ac_id: int
     name: str
     power_control: AcPowerControl
@@ -136,6 +152,7 @@ class AcPowerActionResult(BaseModel):
 
 
 class AirtouchPowerResponse(BaseModel):
+    """Overall response for bulk AirTouch console power control operations."""
     model: str
     host: str
     port: int
@@ -144,10 +161,11 @@ class AirtouchPowerResponse(BaseModel):
 
 
 class ActionResponse(BaseModel):
+    """Generic status and message response for control operations."""
     status: str
     message: str
 
 
 class DiscoveryResponse(BaseModel):
+    """List of all discovered AirTouch devices on the local network."""
     airtouch_devices: List[DiscoveredDevice]
-

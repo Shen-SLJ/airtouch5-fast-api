@@ -21,6 +21,7 @@ from src.core.models import (
 )
 
 class MockAirtouchGateway(AirtouchGateway):
+    """In-memory mock implementation of AirtouchGateway for zero-overhead unit testing."""
     def __init__(self) -> None:
         self.calls = []
         self.connected_val = True

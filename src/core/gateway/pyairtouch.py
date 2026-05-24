@@ -54,20 +54,20 @@ class AirtouchConnectionPool:
     def __init__(self) -> None:
         self._connections: dict[str, pyairtouch.AirTouch] = {}
 
-    async def get_connection(self, host: str) -> pyairtouch.AirTouch:
-        if host in self._connections:
-            connection = self._connections[host]
+    async def get_connection(self, device_handle: str) -> pyairtouch.AirTouch:
+        if device_handle in self._connections:
+            connection = self._connections[device_handle]
             if connection.initialised:
                 return connection
 
         airtouch_instance = pyairtouch.connect(
-            model=DEFAULT_AIRTOUCH_MODEL, host=host, port=DEFAULT_PORT
+            model=DEFAULT_AIRTOUCH_MODEL, host=device_handle, port=DEFAULT_PORT
         )
         is_connected = await airtouch_instance.init()
         if not is_connected:
-            raise AirtouchConnectionError(host)
+            raise AirtouchConnectionError(device_handle)
 
-        self._connections[host] = airtouch_instance
+        self._connections[device_handle] = airtouch_instance
         return airtouch_instance
 
     async def close_all(self) -> None:
@@ -108,11 +108,11 @@ class PyAirtouchGateway(IAirtouchGateway):
             ),
             id=str(discovered_device.airtouch_id),
             serial=discovered_device.serial,
-            host=discovered_device.host,
+            device_handle=discovered_device.host,
         )
 
-    async def get_status(self, host: str) -> AirtouchStatus:
-        airtouch_instance = await self._get_connection(host)
+    async def get_status(self, device_handle: str) -> AirtouchStatus:
+        airtouch_instance = await self._get_connection(device_handle)
 
         air_conditioner_statuses = [
             self._map_air_conditioner_status(air_conditioner)
@@ -125,7 +125,7 @@ class PyAirtouchGateway(IAirtouchGateway):
                 if hasattr(airtouch_instance.model, "name")
                 else airtouch_instance.model
             ),
-            host=airtouch_instance.host,
+            device_handle=airtouch_instance.host,
             port=DEFAULT_PORT,
             connected=True,
             air_conditioners=air_conditioner_statuses,
@@ -186,8 +186,8 @@ class PyAirtouchGateway(IAirtouchGateway):
         except ValueError:
             return list(target_class)[0]
 
-    async def get_capabilities(self, host: str) -> AirtouchCapabilities:
-        airtouch_instance = await self._get_connection(host)
+    async def get_capabilities(self, device_handle: str) -> AirtouchCapabilities:
+        airtouch_instance = await self._get_connection(device_handle)
 
         air_conditioner_capabilities = [
             self._map_air_conditioner_capabilities(air_conditioner)
@@ -200,7 +200,7 @@ class PyAirtouchGateway(IAirtouchGateway):
                 if hasattr(airtouch_instance.model, "name")
                 else airtouch_instance.model
             ),
-            host=airtouch_instance.host,
+            device_handle=airtouch_instance.host,
             port=DEFAULT_PORT,
             connected=True,
             air_conditioners=air_conditioner_capabilities,
@@ -229,9 +229,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         )
 
     async def set_ac_power(
-        self, host: str, air_conditioner_id: int, power_control: AcPowerControl
+        self, device_handle: str, air_conditioner_id: int, power_control: AcPowerControl
     ) -> bool:
-        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
+        air_conditioner = await self._get_air_conditioner(device_handle, air_conditioner_id)
         if air_conditioner is None:
             return False
 
@@ -240,9 +240,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return True
 
     async def _get_air_conditioner(
-        self, host: str, air_conditioner_id: int
+        self, device_handle: str, air_conditioner_id: int
     ) -> Optional[pyairtouch.AirConditioner]:
-        airtouch_instance = await self._get_connection(host)
+        airtouch_instance = await self._get_connection(device_handle)
 
         for air_conditioner in airtouch_instance.air_conditioners:
             if air_conditioner.ac_id == air_conditioner_id:
@@ -251,9 +251,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return None
 
     async def set_all_ac_power(
-        self, host: str, power_control: AcPowerControl
+        self, device_handle: str, power_control: AcPowerControl
     ) -> List[AcPowerActionResult]:
-        airtouch_instance = await self._get_connection(host)
+        airtouch_instance = await self._get_connection(device_handle)
         action_results = []
 
         pyairtouch_power = getattr(pyairtouch.AcPowerControl, power_control.name)
@@ -271,9 +271,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return action_results
 
     async def set_ac_mode(
-        self, host: str, air_conditioner_id: int, mode: AcMode
+        self, device_handle: str, air_conditioner_id: int, mode: AcMode
     ) -> bool:
-        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
+        air_conditioner = await self._get_air_conditioner(device_handle, air_conditioner_id)
         if air_conditioner is None:
             return False
 
@@ -282,9 +282,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return True
 
     async def set_ac_fan_speed(
-        self, host: str, air_conditioner_id: int, fan_speed: AcFanSpeed
+        self, device_handle: str, air_conditioner_id: int, fan_speed: AcFanSpeed
     ) -> bool:
-        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
+        air_conditioner = await self._get_air_conditioner(device_handle, air_conditioner_id)
         if air_conditioner is None:
             return False
 
@@ -293,9 +293,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return True
 
     async def set_ac_temp(
-        self, host: str, air_conditioner_id: int, temperature: float
+        self, device_handle: str, air_conditioner_id: int, temperature: float
     ) -> bool:
-        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
+        air_conditioner = await self._get_air_conditioner(device_handle, air_conditioner_id)
         if air_conditioner is None:
             return False
 
@@ -304,12 +304,12 @@ class PyAirtouchGateway(IAirtouchGateway):
 
     async def set_zone_power(
         self,
-        host: str,
+        device_handle: str,
         air_conditioner_id: int,
         zone_id: int,
         power_state: ZonePowerState,
     ) -> bool:
-        zone = await self._get_zone(host, air_conditioner_id, zone_id)
+        zone = await self._get_zone(device_handle, air_conditioner_id, zone_id)
         if zone is None:
             return False
 
@@ -318,9 +318,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return True
 
     async def _get_zone(
-        self, host: str, air_conditioner_id: int, zone_id: int
+        self, device_handle: str, air_conditioner_id: int, zone_id: int
     ) -> Optional[pyairtouch.Zone]:
-        air_conditioner = await self._get_air_conditioner(host, air_conditioner_id)
+        air_conditioner = await self._get_air_conditioner(device_handle, air_conditioner_id)
         if air_conditioner is None:
             return None
 
@@ -331,9 +331,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return None
 
     async def set_zone_temp(
-        self, host: str, air_conditioner_id: int, zone_id: int, temperature: float
+        self, device_handle: str, air_conditioner_id: int, zone_id: int, temperature: float
     ) -> bool:
-        zone = await self._get_zone(host, air_conditioner_id, zone_id)
+        zone = await self._get_zone(device_handle, air_conditioner_id, zone_id)
         if zone is None:
             return False
 
@@ -341,9 +341,9 @@ class PyAirtouchGateway(IAirtouchGateway):
         return True
 
     async def set_zone_damper(
-        self, host: str, air_conditioner_id: int, zone_id: int, damper_percentage: int
+        self, device_handle: str, air_conditioner_id: int, zone_id: int, damper_percentage: int
     ) -> bool:
-        zone = await self._get_zone(host, air_conditioner_id, zone_id)
+        zone = await self._get_zone(device_handle, air_conditioner_id, zone_id)
         if zone is None:
             return False
 
@@ -353,5 +353,5 @@ class PyAirtouchGateway(IAirtouchGateway):
     async def close_connection(self) -> None:
         await self._connection_pool.close_all()
 
-    async def _get_connection(self, host: str) -> pyairtouch.AirTouch:
-        return await self._connection_pool.get_connection(host)
+    async def _get_connection(self, device_handle: str) -> pyairtouch.AirTouch:
+        return await self._connection_pool.get_connection(device_handle)

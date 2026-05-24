@@ -1,3 +1,3 @@
-from src.core.registry.device_registry import DeviceRegistry, get_registry
+from src.core.registry.device_registry import IDeviceRegistry, DeviceRegistry, get_registry
 
-__all__ = ["DeviceRegistry", "get_registry"]
+__all__ = ["IDeviceRegistry", "DeviceRegistry", "get_registry"]

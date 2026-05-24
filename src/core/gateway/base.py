@@ -27,46 +27,46 @@ class IAirtouchGateway(ABC):
         pass
 
     @abstractmethod
-    async def get_status(self, host: str) -> AirtouchStatus:
+    async def get_status(self, device_handle: str) -> AirtouchStatus:
         """Retrieve the detailed status of all air conditioners and zones for a given host."""
         pass
 
     @abstractmethod
-    async def get_capabilities(self, host: str) -> AirtouchCapabilities:
+    async def get_capabilities(self, device_handle: str) -> AirtouchCapabilities:
         """Retrieve target temperature ranges, resolutions, modes, and fan speeds for a host."""
         pass
 
     @abstractmethod
     async def set_ac_power(
-        self, host: str, air_conditioner_id: int, power_control: AcPowerControl
+        self, device_handle: str, air_conditioner_id: int, power_control: AcPowerControl
     ) -> bool:
         """Set the power control state of a specific air conditioner unit."""
         pass
 
     @abstractmethod
     async def set_all_ac_power(
-        self, host: str, power_control: AcPowerControl
+        self, device_handle: str, power_control: AcPowerControl
     ) -> List[AcPowerActionResult]:
         """Apply a power control command (e.g., TURN_ON, TURN_OFF) to all supported air conditioners."""
         pass
 
     @abstractmethod
     async def set_ac_mode(
-        self, host: str, air_conditioner_id: int, mode: AcMode
+        self, device_handle: str, air_conditioner_id: int, mode: AcMode
     ) -> bool:
         """Set the operational mode (e.g. COOL, HEAT, FAN) of a specific air conditioner unit."""
         pass
 
     @abstractmethod
     async def set_ac_fan_speed(
-        self, host: str, air_conditioner_id: int, fan_speed: AcFanSpeed
+        self, device_handle: str, air_conditioner_id: int, fan_speed: AcFanSpeed
     ) -> bool:
         """Set the fan speed of a specific air conditioner unit."""
         pass
 
     @abstractmethod
     async def set_ac_temp(
-        self, host: str, air_conditioner_id: int, temperature: float
+        self, device_handle: str, air_conditioner_id: int, temperature: float
     ) -> bool:
         """Set the target temperature for a specific air conditioner unit."""
         pass
@@ -74,7 +74,7 @@ class IAirtouchGateway(ABC):
     @abstractmethod
     async def set_zone_power(
         self,
-        host: str,
+        device_handle: str,
         air_conditioner_id: int,
         zone_id: int,
         power_state: ZonePowerState,
@@ -84,14 +84,14 @@ class IAirtouchGateway(ABC):
 
     @abstractmethod
     async def set_zone_temp(
-        self, host: str, air_conditioner_id: int, zone_id: int, temperature: float
+        self, device_handle: str, air_conditioner_id: int, zone_id: int, temperature: float
     ) -> bool:
         """Set the target temperature of a specific temperature-controlled zone."""
         pass
 
     @abstractmethod
     async def set_zone_damper(
-        self, host: str, air_conditioner_id: int, zone_id: int, damper_percentage: int
+        self, device_handle: str, air_conditioner_id: int, zone_id: int, damper_percentage: int
     ) -> bool:
         """Set the damper opening percentage of a specific damper-controlled zone."""
         pass

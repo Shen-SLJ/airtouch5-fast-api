@@ -26,7 +26,7 @@ async def test_get_status_success(mock_gateway):
     assert result.connected is True
     assert len(result.air_conditioners) == 1
     assert result.air_conditioners[0].name == "Living AC"
-    assert ("get_status", {"host": "192.168.1.15"}) in mock_gateway.calls
+    assert ("get_status", {"device_handle": "192.168.1.15"}) in mock_gateway.calls
 
 
 @pytest.mark.asyncio
@@ -56,7 +56,7 @@ async def test_get_capabilities_success(mock_gateway):
     # Assert
     assert result.connected is True
     assert result.air_conditioners[0].min_target_temperature == 16.0
-    assert ("get_capabilities", {"host": "192.168.1.15"}) in mock_gateway.calls
+    assert ("get_capabilities", {"device_handle": "192.168.1.15"}) in mock_gateway.calls
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ async def test_set_all_ac_power_turn_on_success(mock_gateway):
     )
 
     # Assert
-    assert status_info.host == "192.168.1.15"
+    assert status_info.device_handle == "192.168.1.15"
     assert status_info.connected is True
     assert len(action_results) == 1
     assert action_results[0].ac_id == 0
@@ -82,7 +82,7 @@ async def test_set_all_ac_power_turn_on_success(mock_gateway):
     assert action_results[0].applied is True
     assert (
         "set_all_ac_power",
-        {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_ON},
+        {"device_handle": "192.168.1.15", "power_control": AcPowerControl.TURN_ON},
     ) in mock_gateway.calls
 
 
@@ -100,7 +100,7 @@ async def test_set_all_ac_power_turn_off_success(mock_gateway):
     assert action_results[0].power_control == AcPowerControl.TURN_OFF
     assert (
         "set_all_ac_power",
-        {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_OFF},
+        {"device_handle": "192.168.1.15", "power_control": AcPowerControl.TURN_OFF},
     ) in mock_gateway.calls
 
 
@@ -134,7 +134,7 @@ async def test_update_ac_power_only_returns_power_field(mock_gateway):
     assert applied == [AcField.POWER]
     assert (
         "set_ac_power",
-        {"host": "192.168.1.15", "air_conditioner_id": 0, "power_control": AcPowerControl.TURN_ON},
+        {"device_handle": "192.168.1.15", "air_conditioner_id": 0, "power_control": AcPowerControl.TURN_ON},
     ) in mock_gateway.calls
 
 
@@ -151,7 +151,7 @@ async def test_update_ac_mode_only_returns_mode_field(mock_gateway):
     assert applied == [AcField.MODE]
     assert (
         "set_ac_mode",
-        {"host": "192.168.1.15", "air_conditioner_id": 0, "mode": AcMode.COOL},
+        {"device_handle": "192.168.1.15", "air_conditioner_id": 0, "mode": AcMode.COOL},
     ) in mock_gateway.calls
 
 
@@ -168,7 +168,7 @@ async def test_update_ac_fan_speed_only_returns_fan_speed_field(mock_gateway):
     assert applied == [AcField.FAN_SPEED]
     assert (
         "set_ac_fan_speed",
-        {"host": "192.168.1.15", "air_conditioner_id": 0, "fan_speed": AcFanSpeed.HIGH},
+        {"device_handle": "192.168.1.15", "air_conditioner_id": 0, "fan_speed": AcFanSpeed.HIGH},
     ) in mock_gateway.calls
 
 
@@ -185,7 +185,7 @@ async def test_update_ac_temperature_only_returns_temperature_field(mock_gateway
     assert applied == [AcField.TEMPERATURE]
     assert (
         "set_ac_temp",
-        {"host": "192.168.1.15", "air_conditioner_id": 0, "temperature": 24.0},
+        {"device_handle": "192.168.1.15", "air_conditioner_id": 0, "temperature": 24.0},
     ) in mock_gateway.calls
 
 

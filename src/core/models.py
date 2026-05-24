@@ -11,9 +11,9 @@ class ActionStatus(StrEnum):
 
 class AirtouchConnectionError(Exception):
     """Exception raised when connection to the AirTouch console fails."""
-    def __init__(self, host: str) -> None:
-        super().__init__(f"Could not connect to Airtouch console at {host}")
-        self.host = host
+    def __init__(self, device_handle: str) -> None:
+        super().__init__(f"Could not connect to Airtouch console at {device_handle}")
+        self.device_handle = device_handle
 
 
 class AirtouchControlError(Exception):
@@ -96,7 +96,7 @@ class DiscoveredDevice(BaseModel):
     model: str
     id: str
     serial: str
-    host: str
+    device_handle: str
 
 
 class ZoneStatus(BaseModel):
@@ -131,7 +131,7 @@ class AcStatus(BaseModel):
 class AirtouchStatus(BaseModel):
     """Overall status response for an AirTouch console, containing all AC units."""
     model: str
-    host: str
+    device_handle: str
     port: int
     connected: bool
     air_conditioners: List[AcStatus]
@@ -152,7 +152,7 @@ class AcCapabilities(BaseModel):
 class AirtouchCapabilities(BaseModel):
     """Overall capabilities response for an AirTouch console and its AC units."""
     model: str
-    host: str
+    device_handle: str
     port: int
     connected: bool
     air_conditioners: List[AcCapabilities]

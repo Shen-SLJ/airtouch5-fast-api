@@ -99,7 +99,7 @@ async def test_get_connection_pooled_reuse(mock_connect):
 
 @pytest.mark.asyncio
 @patch("pyairtouch.connect")
-async def test_get_connection_multiple_hosts(mock_connect):
+async def test_get_connection_multiple_handles(mock_connect):
     # Arrange
     mock_airtouch_first = MagicMock()
     mock_airtouch_first.initialised = True

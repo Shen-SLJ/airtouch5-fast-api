@@ -1,18 +1,38 @@
+from abc import ABC, abstractmethod
 from fastapi import HTTPException, Request
 
 
-class DeviceRegistry:
-    """Hardcoded device registry mapping AirTouch device IDs to their private IP addresses.
+class IDeviceRegistry(ABC):
+    """Abstract interface representing a device registry that maps
+
+    AirTouch device IDs to generic device handles (e.g., connection targets).
+    """
+
+    @abstractmethod
+    def resolve(self, device_id: str) -> str:
+        """Resolves a device ID to its generic device handle (e.g. host IP, serial, etc.).
+
+        Args:
+            device_id: The AirTouch device ID.
+
+        Returns:
+            str: The device handle to connect to the physical unit.
+        """
+        pass
+
+
+class DeviceRegistry(IDeviceRegistry):
+    """Hardcoded device registry mapping AirTouch device IDs to their device handles.
 
     Maps the AirTouch device ID (``DiscoveredDevice.id``, i.e. the integer
-    airtouch_id cast to string) to its static private IP on the local network.
+    airtouch_id cast to string) to its static connection target (IP) on the local network.
 
     In production this would be backed by a persistent database or service
     discovery mechanism. Currently hardcoded for development.
     """
 
+    # Maps device_id -> device_handle (currently static IP)
     _registry: dict[str, str] = {
-        # airtouch_id (str) -> private IP address
         "1": "192.168.68.68",
     }
 
@@ -28,8 +48,8 @@ class DeviceRegistry:
         Raises:
             HTTPException: 404 if the device ID is not found in the registry.
         """
-        host = self._registry.get(device_id)
-        if host is None:
+        device_handle = self._registry.get(device_id)
+        if device_handle is None:
             raise HTTPException(
                 status_code=404,
                 detail=(
@@ -37,9 +57,9 @@ class DeviceRegistry:
                     f"Known device IDs: {list(self._registry.keys())}"
                 ),
             )
-        return host
+        return device_handle
 
 
-def get_registry(request: Request) -> DeviceRegistry:
+def get_registry(request: Request) -> IDeviceRegistry:
     """FastAPI dependency that retrieves the shared DeviceRegistry from application state."""
     return request.app.state.device_registry

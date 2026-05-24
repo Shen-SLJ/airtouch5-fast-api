@@ -1,9 +1,23 @@
+from abc import ABC, abstractmethod
 from typing import List
 from src.core.gateway import IAirtouchGateway
 from src.core.models import DiscoveredDevice
 
 
-class DiscoveryService:
+class IDiscoveryService(ABC):
+    """Abstract interface for device discovery service."""
+
+    @abstractmethod
+    async def discover_devices(self) -> List[DiscoveredDevice]:
+        """Discovers all AirTouch consoles on the local network.
+
+        Returns:
+            List[DiscoveredDevice]: List containing details of all discovered devices.
+        """
+        pass
+
+
+class DiscoveryService(IDiscoveryService):
     """Service handling hardware console discovery logic on the local network."""
 
     def __init__(self, gateway: IAirtouchGateway) -> None:

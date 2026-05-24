@@ -44,7 +44,7 @@ async def airtouch_connection_error_handler(
     return JSONResponse(
         status_code=503,
         content={
-            "detail": f"Could not connect to Airtouch console at {exception.host}"
+            "detail": f"Could not connect to Airtouch console at {exception.device_handle}"
         },
     )
 

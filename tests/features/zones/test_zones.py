@@ -22,7 +22,7 @@ async def test_update_zone_power_only_returns_power_field(mock_gateway):
     assert (
         "set_zone_power",
         {
-            "host": "192.168.1.15",
+            "device_handle": "192.168.1.15",
             "air_conditioner_id": 0,
             "zone_id": 1,
             "power_state": ZonePowerState.ON,
@@ -44,7 +44,7 @@ async def test_update_zone_temperature_only_returns_temperature_field(mock_gatew
     assert (
         "set_zone_temp",
         {
-            "host": "192.168.1.15",
+            "device_handle": "192.168.1.15",
             "air_conditioner_id": 0,
             "zone_id": 1,
             "temperature": 23.0,
@@ -66,7 +66,7 @@ async def test_update_zone_damper_only_returns_damper_field(mock_gateway):
     assert (
         "set_zone_damper",
         {
-            "host": "192.168.1.15",
+            "device_handle": "192.168.1.15",
             "air_conditioner_id": 0,
             "zone_id": 2,
             "damper_percentage": 75,

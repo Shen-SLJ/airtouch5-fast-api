@@ -44,7 +44,7 @@ class AcPatchRequest(BaseModel):
 class AirtouchPowerResponse(BaseModel):
     """Response for a bulk power control operation across all AC units on a console."""
     model: str
-    host: str
+    device_handle: str
     port: int
     connected: bool
     air_conditioners: List[AcPowerActionResult]

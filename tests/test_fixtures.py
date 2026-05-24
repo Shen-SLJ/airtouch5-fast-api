@@ -32,13 +32,13 @@ class MockAirtouchGateway(IAirtouchGateway):
                 model="AIRTOUCH_5",
                 id="at5_9876",
                 serial="98765432",
-                host="192.168.1.15",
+                device_handle="192.168.1.15",
             )
         ]
         
         self.status_val = AirtouchStatus(
             model="AIRTOUCH_5",
-            host="192.168.1.15",
+            device_handle="192.168.1.15",
             port=9005,
             connected=True,
             air_conditioners=[
@@ -84,7 +84,7 @@ class MockAirtouchGateway(IAirtouchGateway):
         
         self.capabilities_val = AirtouchCapabilities(
             model="AIRTOUCH_5",
-            host="192.168.1.15",
+            device_handle="192.168.1.15",
             port=9005,
             connected=True,
             air_conditioners=[
@@ -107,34 +107,34 @@ class MockAirtouchGateway(IAirtouchGateway):
         self.calls.append(("discover_devices", {}))
         return self.devices_val
 
-    async def get_status(self, host: str) -> AirtouchStatus:
-        self.calls.append(("get_status", {"host": host}))
+    async def get_status(self, device_handle: str) -> AirtouchStatus:
+        self.calls.append(("get_status", {"device_handle": device_handle}))
         if not self.connected_val:
-            raise AirtouchConnectionError(host)
+            raise AirtouchConnectionError(device_handle)
         
         status_copy = self.status_val.model_copy(deep=True)
         status_copy.connected = self.connected_val
-        status_copy.host = host
+        status_copy.device_handle = device_handle
         return status_copy
 
-    async def get_capabilities(self, host: str) -> AirtouchCapabilities:
-        self.calls.append(("get_capabilities", {"host": host}))
+    async def get_capabilities(self, device_handle: str) -> AirtouchCapabilities:
+        self.calls.append(("get_capabilities", {"device_handle": device_handle}))
         if not self.connected_val:
-            raise AirtouchConnectionError(host)
+            raise AirtouchConnectionError(device_handle)
         
         capabilities_copy = self.capabilities_val.model_copy(deep=True)
         capabilities_copy.connected = self.connected_val
-        capabilities_copy.host = host
+        capabilities_copy.device_handle = device_handle
         return capabilities_copy
 
-    async def set_ac_power(self, host: str, air_conditioner_id: int, power_control: AcPowerControl) -> bool:
-        self.calls.append(("set_ac_power", {"host": host, "air_conditioner_id": air_conditioner_id, "power_control": power_control}))
+    async def set_ac_power(self, device_handle: str, air_conditioner_id: int, power_control: AcPowerControl) -> bool:
+        self.calls.append(("set_ac_power", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "power_control": power_control}))
         return self.control_success
 
-    async def set_all_ac_power(self, host: str, power_control: AcPowerControl) -> List[AcPowerActionResult]:
-        self.calls.append(("set_all_ac_power", {"host": host, "power_control": power_control}))
+    async def set_all_ac_power(self, device_handle: str, power_control: AcPowerControl) -> List[AcPowerActionResult]:
+        self.calls.append(("set_all_ac_power", {"device_handle": device_handle, "power_control": power_control}))
         if not self.connected_val:
-            raise AirtouchConnectionError(host)
+            raise AirtouchConnectionError(device_handle)
         
         return [
             AcPowerActionResult(
@@ -146,28 +146,28 @@ class MockAirtouchGateway(IAirtouchGateway):
             for air_conditioner in self.status_val.air_conditioners
         ]
 
-    async def set_ac_mode(self, host: str, air_conditioner_id: int, mode: AcMode) -> bool:
-        self.calls.append(("set_ac_mode", {"host": host, "air_conditioner_id": air_conditioner_id, "mode": mode}))
+    async def set_ac_mode(self, device_handle: str, air_conditioner_id: int, mode: AcMode) -> bool:
+        self.calls.append(("set_ac_mode", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "mode": mode}))
         return self.control_success
 
-    async def set_ac_fan_speed(self, host: str, air_conditioner_id: int, fan_speed: AcFanSpeed) -> bool:
-        self.calls.append(("set_ac_fan_speed", {"host": host, "air_conditioner_id": air_conditioner_id, "fan_speed": fan_speed}))
+    async def set_ac_fan_speed(self, device_handle: str, air_conditioner_id: int, fan_speed: AcFanSpeed) -> bool:
+        self.calls.append(("set_ac_fan_speed", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "fan_speed": fan_speed}))
         return self.control_success
 
-    async def set_ac_temp(self, host: str, air_conditioner_id: int, temperature: float) -> bool:
-        self.calls.append(("set_ac_temp", {"host": host, "air_conditioner_id": air_conditioner_id, "temperature": temperature}))
+    async def set_ac_temp(self, device_handle: str, air_conditioner_id: int, temperature: float) -> bool:
+        self.calls.append(("set_ac_temp", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "temperature": temperature}))
         return self.control_success
 
-    async def set_zone_power(self, host: str, air_conditioner_id: int, zone_id: int, power_state: ZonePowerState) -> bool:
-        self.calls.append(("set_zone_power", {"host": host, "air_conditioner_id": air_conditioner_id, "zone_id": zone_id, "power_state": power_state}))
+    async def set_zone_power(self, device_handle: str, air_conditioner_id: int, zone_id: int, power_state: ZonePowerState) -> bool:
+        self.calls.append(("set_zone_power", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "zone_id": zone_id, "power_state": power_state}))
         return self.control_success
 
-    async def set_zone_temp(self, host: str, air_conditioner_id: int, zone_id: int, temperature: float) -> bool:
-        self.calls.append(("set_zone_temp", {"host": host, "air_conditioner_id": air_conditioner_id, "zone_id": zone_id, "temperature": temperature}))
+    async def set_zone_temp(self, device_handle: str, air_conditioner_id: int, zone_id: int, temperature: float) -> bool:
+        self.calls.append(("set_zone_temp", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "zone_id": zone_id, "temperature": temperature}))
         return self.control_success
 
-    async def set_zone_damper(self, host: str, air_conditioner_id: int, zone_id: int, damper_percentage: int) -> bool:
-        self.calls.append(("set_zone_damper", {"host": host, "air_conditioner_id": air_conditioner_id, "zone_id": zone_id, "damper_percentage": damper_percentage}))
+    async def set_zone_damper(self, device_handle: str, air_conditioner_id: int, zone_id: int, damper_percentage: int) -> bool:
+        self.calls.append(("set_zone_damper", {"device_handle": device_handle, "air_conditioner_id": air_conditioner_id, "zone_id": zone_id, "damper_percentage": damper_percentage}))
         return self.control_success
 
     async def close_connection(self) -> None:

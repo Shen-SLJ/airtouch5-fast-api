@@ -5,6 +5,7 @@ from src.core.models import (
     ZoneControlMethod,
     AirtouchControlError,
 )
+from src.features.zones.models import ZonePatchRequest, ZoneField
 
 
 class ZoneService:
@@ -32,10 +33,51 @@ class ZoneService:
                     f"Zone {zone_id} does not exist on AC {air_conditioner_id}."
                 )
         raise AirtouchControlError(
-            f"AC {air_conditioner_id} does not exist on host {host}."
+            f"AC {air_conditioner_id} does not exist on the console."
         )
 
-    async def set_zone_power(
+    async def update_zone(
+        self,
+        host: str,
+        air_conditioner_id: int,
+        zone_id: int,
+        patch: ZonePatchRequest,
+    ) -> list[ZoneField]:
+        """Applies a sparse update to a specific zone.
+
+        Only the fields present in the patch are applied. Validates zone existence and
+        control-mode compatibility before each control call. Fields are applied in the
+        order: power → temperature → damper_percentage.
+
+        Args:
+            host: Private IP address of the AirTouch console (resolved from device ID).
+            air_conditioner_id: ID of the parent Air Conditioner unit.
+            zone_id: ID of the zone to update.
+            patch: Domain model containing the fields to update.
+
+        Returns:
+            list[ZoneField]: The fields that were successfully applied.
+
+        Raises:
+            AirtouchControlError: If the AC or zone does not exist, a value is incompatible, or a call fails.
+        """
+        applied: list[ZoneField] = []
+
+        if patch.power is not None:
+            await self._set_zone_power(host, air_conditioner_id, zone_id, patch.power)
+            applied.append(ZoneField.POWER)
+
+        if patch.temperature is not None:
+            await self._set_zone_temp(host, air_conditioner_id, zone_id, patch.temperature)
+            applied.append(ZoneField.TEMPERATURE)
+
+        if patch.damper_percentage is not None:
+            await self._set_zone_damper(host, air_conditioner_id, zone_id, patch.damper_percentage)
+            applied.append(ZoneField.DAMPER_PERCENTAGE)
+
+        return applied
+
+    async def _set_zone_power(
         self,
         host: str,
         air_conditioner_id: int,
@@ -45,7 +87,7 @@ class ZoneService:
         """Sets the operational power state of a specific zone.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the parent Air Conditioner unit.
             zone_id: ID of the zone to control.
             power: Desired ZonePowerState.
@@ -63,7 +105,7 @@ class ZoneService:
                 f"Failed to set zone {zone_id} power state to {power}."
             )
 
-    async def set_zone_temp(
+    async def _set_zone_temp(
         self,
         host: str,
         air_conditioner_id: int,
@@ -73,7 +115,7 @@ class ZoneService:
         """Sets the target temperature of a specific temperature-controlled zone.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the parent Air Conditioner unit.
             zone_id: ID of the zone to control.
             temperature: Target temperature value.
@@ -95,7 +137,7 @@ class ZoneService:
                 f"Failed to set zone {zone_id} temperature to {temperature}."
             )
 
-    async def set_zone_damper(
+    async def _set_zone_damper(
         self,
         host: str,
         air_conditioner_id: int,
@@ -105,19 +147,14 @@ class ZoneService:
         """Sets the damper opening percentage of a specific damper-controlled zone.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the parent Air Conditioner unit.
             zone_id: ID of the zone to control.
             damper_percentage: Damper opening percentage (0-100).
 
         Raises:
-            AirtouchControlError: If AC or zone does not exist, damper is out of bounds, or call fails.
+            AirtouchControlError: If AC or zone does not exist or the call fails.
         """
-        if not (0 <= damper_percentage <= 100):
-            raise AirtouchControlError(
-                f"Damper percentage {damper_percentage} is out of bounds (0-100)."
-            )
-
         await self._get_zone_status(host, air_conditioner_id, zone_id)
 
         is_successful = await self._gateway.set_zone_damper(

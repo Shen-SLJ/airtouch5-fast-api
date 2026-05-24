@@ -1,43 +1,25 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.core.gateway import IAirtouchGateway, get_gateway
+from src.core.registry import DeviceRegistry, get_registry
 from src.core.models import (
     AirtouchStatus,
     AirtouchCapabilities,
     AcPowerControl,
-    AcMode,
-    AcFanSpeed,
     ActionResponse,
-    AirtouchPowerResponse,
+    ActionStatus,
 )
+from src.features.ac.models import AcPatchRequest, AcField, AirtouchPowerResponse
 from src.features.ac.service import AcService
 
 router = APIRouter(prefix="/api/v1/airtouches", tags=["AC Control"])
 
 
-class AcPowerRequest(BaseModel):
-    """API request payload schema for changing Air Conditioner power status."""
+class AcBulkPowerRequest(BaseModel):
+    """Request body for a bulk power update across all AC units on a console."""
 
     power: AcPowerControl
-
-
-class AcModeRequest(BaseModel):
-    """API request payload schema for changing Air Conditioner operational mode."""
-
-    mode: AcMode
-
-
-class AcFanSpeedRequest(BaseModel):
-    """API request payload schema for changing Air Conditioner fan speed."""
-
-    fan_speed: AcFanSpeed
-
-
-class AcTempRequest(BaseModel):
-    """API request payload schema for changing Air Conditioner target temperature."""
-
-    temperature: float = Field(..., description="Target temperature value.")
 
 
 def get_ac_service(gateway: IAirtouchGateway = Depends(get_gateway)) -> AcService:
@@ -45,191 +27,104 @@ def get_ac_service(gateway: IAirtouchGateway = Depends(get_gateway)) -> AcServic
     return AcService(gateway)
 
 
-@router.post("/{host}/start", response_model=AirtouchPowerResponse)
-async def start_airtouch(
-    host: str, service: AcService = Depends(get_ac_service)
-) -> AirtouchPowerResponse:
-    """Starts all Air Conditioner units on a given host console.
-
-    Args:
-        host: IP address or hostname of the AirTouch console.
-        service: The injected AC service.
-
-    Returns:
-        AirtouchPowerResponse: Operational status showing which AC units were successfully turned on.
-    """
-    status_info, action_results = await service.start_airtouch(host)
-    return AirtouchPowerResponse(
-        model=status_info.model,
-        host=status_info.host,
-        port=status_info.port,
-        connected=status_info.connected,
-        air_conditioners=action_results,
-    )
-
-
-@router.post("/{host}/stop", response_model=AirtouchPowerResponse)
-async def stop_airtouch(
-    host: str, service: AcService = Depends(get_ac_service)
-) -> AirtouchPowerResponse:
-    """Stops all Air Conditioner units on a given host console.
-
-    Args:
-        host: IP address or hostname of the AirTouch console.
-        service: The injected AC service.
-
-    Returns:
-        AirtouchPowerResponse: Operational status showing which AC units were successfully turned off.
-    """
-    status_info, action_results = await service.stop_airtouch(host)
-    return AirtouchPowerResponse(
-        model=status_info.model,
-        host=status_info.host,
-        port=status_info.port,
-        connected=status_info.connected,
-        air_conditioners=action_results,
-    )
-
-
-@router.get("/{host}/status", response_model=AirtouchStatus)
+@router.get("/{device_id}", response_model=AirtouchStatus)
 async def get_airtouch_status(
-    host: str, service: AcService = Depends(get_ac_service)
+    device_id: str,
+    service: AcService = Depends(get_ac_service),
+    registry: DeviceRegistry = Depends(get_registry),
 ) -> AirtouchStatus:
-    """Retrieves the comprehensive status of all Air Conditioners and Zones on a host console.
+    """Retrieves the comprehensive status of all Air Conditioners and Zones on a device console.
 
     Args:
-        host: IP address or hostname of the AirTouch console.
+        device_id: The AirTouch device ID (from device discovery).
         service: The injected AC service.
+        registry: The injected device registry for resolving device_id to host IP.
 
     Returns:
         AirtouchStatus: Detailed runtime status model.
     """
+    host = registry.resolve(device_id)
     return await service.get_status(host)
 
 
-@router.get("/{host}/capabilities", response_model=AirtouchCapabilities)
+@router.get("/{device_id}/capabilities", response_model=AirtouchCapabilities)
 async def get_airtouch_capabilities(
-    host: str, service: AcService = Depends(get_ac_service)
+    device_id: str,
+    service: AcService = Depends(get_ac_service),
+    registry: DeviceRegistry = Depends(get_registry),
 ) -> AirtouchCapabilities:
-    """Retrieves supported hardware capabilities of a host console.
+    """Retrieves supported hardware capabilities of a device console.
 
     Args:
-        host: IP address or hostname of the AirTouch console.
+        device_id: The AirTouch device ID (from device discovery).
         service: The injected AC service.
+        registry: The injected device registry for resolving device_id to host IP.
 
     Returns:
         AirtouchCapabilities: Detailed hardware capabilities model.
     """
+    host = registry.resolve(device_id)
     return await service.get_capabilities(host)
 
 
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/power",
-    response_model=ActionResponse,
-)
-async def set_ac_power(
-    host: str,
-    air_conditioner_id: int,
-    request: AcPowerRequest,
+@router.patch("/{device_id}/air-conditioners", response_model=AirtouchPowerResponse)
+async def patch_all_air_conditioners(
+    device_id: str,
+    request: AcBulkPowerRequest,
     service: AcService = Depends(get_ac_service),
-) -> ActionResponse:
-    """Sets the power state of a specific AC unit.
+    registry: DeviceRegistry = Depends(get_registry),
+) -> AirtouchPowerResponse:
+    """Applies a bulk power update to all Air Conditioner units on a device console.
 
     Args:
-        host: IP address or hostname of the AirTouch console.
-        air_conditioner_id: ID of the Air Conditioner unit to control.
-        request: Request body containing the desired AcPowerControl state.
+        device_id: The AirTouch device ID (from device discovery).
+        request: Request body specifying the power state to apply to all AC units.
         service: The injected AC service.
+        registry: The injected device registry for resolving device_id to host IP.
 
     Returns:
-        ActionResponse: A status confirmation of the command execution.
+        AirtouchPowerResponse: Operational status showing the applied power state per AC unit.
     """
-    await service.set_ac_power(host, air_conditioner_id, request.power)
-    return ActionResponse(
-        status="success",
-        message=f"AC {air_conditioner_id} power state set to {request.power}",
+    host = registry.resolve(device_id)
+    status_info, action_results = await service.set_all_ac_power(host, request.power)
+    return AirtouchPowerResponse(
+        model=status_info.model,
+        host=status_info.host,
+        port=status_info.port,
+        connected=status_info.connected,
+        air_conditioners=action_results,
     )
 
 
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/mode",
+@router.patch(
+    "/{device_id}/air-conditioners/{air_conditioner_id}",
     response_model=ActionResponse,
 )
-async def set_ac_mode(
-    host: str,
+async def patch_air_conditioner(
+    device_id: str,
     air_conditioner_id: int,
-    request: AcModeRequest,
+    request: AcPatchRequest,
     service: AcService = Depends(get_ac_service),
+    registry: DeviceRegistry = Depends(get_registry),
 ) -> ActionResponse:
-    """Sets the operational mode of a specific AC unit.
+    """Partially updates one or more properties of a specific Air Conditioner unit.
+
+    At least one field (power, mode, fan_speed, or temperature) must be provided.
+    Fields not included in the request body are left unchanged.
 
     Args:
-        host: IP address or hostname of the AirTouch console.
-        air_conditioner_id: ID of the Air Conditioner unit to control.
-        request: Request body containing the desired AcMode.
+        device_id: The AirTouch device ID (from device discovery).
+        air_conditioner_id: ID of the Air Conditioner unit to update.
+        request: Sparse domain model containing the fields to update.
         service: The injected AC service.
+        registry: The injected device registry for resolving device_id to host IP.
 
     Returns:
-        ActionResponse: A status confirmation of the command execution.
+        ActionResponse: A status confirmation listing the fields that were updated.
     """
-    await service.set_ac_mode(host, air_conditioner_id, request.mode)
+    host = registry.resolve(device_id)
+    applied = await service.update_air_conditioner(host, air_conditioner_id, request)
     return ActionResponse(
-        status="success",
-        message=f"AC {air_conditioner_id} mode set to {request.mode}",
-    )
-
-
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/fan-speed",
-    response_model=ActionResponse,
-)
-async def set_ac_fan_speed(
-    host: str,
-    air_conditioner_id: int,
-    request: AcFanSpeedRequest,
-    service: AcService = Depends(get_ac_service),
-) -> ActionResponse:
-    """Sets the fan speed of a specific AC unit.
-
-    Args:
-        host: IP address or hostname of the AirTouch console.
-        air_conditioner_id: ID of the Air Conditioner unit to control.
-        request: Request body containing the desired AcFanSpeed.
-        service: The injected AC service.
-
-    Returns:
-        ActionResponse: A status confirmation of the command execution.
-    """
-    await service.set_ac_fan_speed(host, air_conditioner_id, request.fan_speed)
-    return ActionResponse(
-        status="success",
-        message=f"AC {air_conditioner_id} fan speed set to {request.fan_speed}",
-    )
-
-
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/temp",
-    response_model=ActionResponse,
-)
-async def set_ac_temp(
-    host: str,
-    air_conditioner_id: int,
-    request: AcTempRequest,
-    service: AcService = Depends(get_ac_service),
-) -> ActionResponse:
-    """Sets the target temperature of a specific Air Conditioner unit.
-
-    Args:
-        host: IP address or hostname of the AirTouch console.
-        air_conditioner_id: ID of the Air Conditioner unit to control.
-        request: Request body containing the target temperature.
-        service: The injected AC service.
-
-    Returns:
-        ActionResponse: A status confirmation of the command execution.
-    """
-    await service.set_ac_temp(host, air_conditioner_id, request.temperature)
-    return ActionResponse(
-        status="success",
-        message=f"AC {air_conditioner_id} temperature set to {request.temperature}",
+        status=ActionStatus.SUCCESS,
+        message=f"AC {air_conditioner_id} updated: {', '.join(applied)}",
     )

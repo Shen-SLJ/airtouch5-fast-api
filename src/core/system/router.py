@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.core.models import SystemHealthResponse
+from src.core.system.models import SystemHealthResponse, HealthStatus
 
 router = APIRouter(tags=["System"])
 
@@ -11,4 +11,4 @@ def get_health() -> SystemHealthResponse:
     Returns:
         SystemHealthResponse: Fully modelled health status response.
     """
-    return SystemHealthResponse(status="ok")
+    return SystemHealthResponse(status=HealthStatus.OK)

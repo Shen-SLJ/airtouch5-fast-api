@@ -5,6 +5,7 @@ from typing import List, Optional, Type, TypeVar
 from enum import Enum
 
 from src.core.gateway.base import IAirtouchGateway
+from src.core.registry import DeviceRegistry
 from src.core.models import (
     AirtouchConnectionError,
     DiscoveredDevice,
@@ -32,10 +33,11 @@ EnumGenericType = TypeVar("EnumGenericType", bound=Enum)
 
 @asynccontextmanager
 async def pyairtouch_lifespan(app: FastAPI):
-    """Manages the lifetime of the AirtouchConnectionPool and PyAirtouchGateway for FastAPI."""
+    """Manages the lifetime of the AirtouchConnectionPool, PyAirtouchGateway, and DeviceRegistry for FastAPI."""
     connection_pool = AirtouchConnectionPool()
     gateway = PyAirtouchGateway(connection_pool=connection_pool)
     app.state.gateway = gateway
+    app.state.device_registry = DeviceRegistry()
 
     yield
 

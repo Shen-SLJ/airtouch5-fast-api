@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from src.core.gateway import IAirtouchGateway, get_gateway
-from src.core.models import DiscoveryResponse
+from src.features.discovery.models import DiscoveryResponse
 from src.features.discovery.service import DiscoveryService
 
 router = APIRouter(prefix="/api/v1/airtouches", tags=["Discovery"])

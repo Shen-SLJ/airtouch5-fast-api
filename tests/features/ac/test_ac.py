@@ -1,19 +1,6 @@
 import pytest
-from src.features.ac.router import (
-    start_airtouch,
-    stop_airtouch,
-    get_airtouch_status,
-    get_airtouch_capabilities,
-    set_ac_power,
-    set_ac_mode,
-    set_ac_fan_speed,
-    set_ac_temp,
-    AcPowerRequest,
-    AcModeRequest,
-    AcFanSpeedRequest,
-    AcTempRequest,
-)
 from src.features.ac.service import AcService
+from src.features.ac.models import AcPatchRequest, AcField
 from src.core.models import (
     AcPowerControl,
     AcMode,
@@ -23,101 +10,48 @@ from src.core.models import (
 )
 
 
+# ---------------------------------------------------------------------------
+# get_status
+# ---------------------------------------------------------------------------
+
 @pytest.mark.asyncio
-async def test_start_airtouch_success(mock_gateway):
+async def test_get_status_success(mock_gateway):
     # Arrange
     service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await start_airtouch(host="192.168.1.15", service=service)
-
-    # Assert
-    assert result.host == "192.168.1.15"
-    assert result.connected is True
-    assert len(result.air_conditioners) == 1
-    assert result.air_conditioners[0].ac_id == 0
-    assert result.air_conditioners[0].power_control == AcPowerControl.TURN_ON
-    assert result.air_conditioners[0].applied is True
-
-    assert (
-        "set_all_ac_power",
-        {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_ON},
-    ) in mock_gateway.calls
-    assert ("get_status", {"host": "192.168.1.15"}) in mock_gateway.calls
-
-
-@pytest.mark.asyncio
-async def test_start_airtouch_raises_connection_error_when_gateway_disconnected(
-    mock_gateway,
-):
-    # Arrange
-    mock_gateway.connected_val = False
-    service = AcService(gateway=mock_gateway)
-
-    # Act
-    with pytest.raises(AirtouchConnectionError) as exception_info:
-        await start_airtouch(host="192.168.1.15", service=service)
-
-    # Assert
-    assert "Could not connect to Airtouch" in str(exception_info.value)
-
-
-@pytest.mark.asyncio
-async def test_stop_airtouch_success(mock_gateway):
-    # Arrange
-    service = AcService(gateway=mock_gateway)
-
-    # Act
-    result = await stop_airtouch(host="192.168.1.15", service=service)
-
-    # Assert
-    assert result.host == "192.168.1.15"
-    assert result.air_conditioners[0].power_control == AcPowerControl.TURN_OFF
-    assert (
-        "set_all_ac_power",
-        {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_OFF},
-    ) in mock_gateway.calls
-
-
-@pytest.mark.asyncio
-async def test_get_airtouch_status_success(mock_gateway):
-    # Arrange
-    service = AcService(gateway=mock_gateway)
-
-    # Act
-    result = await get_airtouch_status(host="192.168.1.15", service=service)
+    result = await service.get_status("192.168.1.15")
 
     # Assert
     assert result.connected is True
     assert len(result.air_conditioners) == 1
     assert result.air_conditioners[0].name == "Living AC"
-    assert len(result.air_conditioners[0].zones) == 2
     assert ("get_status", {"host": "192.168.1.15"}) in mock_gateway.calls
 
 
 @pytest.mark.asyncio
-async def test_get_status_raises_connection_error_when_gateway_disconnected(
-    mock_gateway,
-):
+async def test_get_status_raises_connection_error_when_gateway_disconnected(mock_gateway):
     # Arrange
     mock_gateway.connected_val = False
     service = AcService(gateway=mock_gateway)
 
-    # Act
-    with pytest.raises(AirtouchConnectionError) as exception_info:
-        await get_airtouch_status(host="192.168.1.15", service=service)
+    # Act & Assert
+    with pytest.raises(AirtouchConnectionError) as exc_info:
+        await service.get_status("192.168.1.15")
+    assert "Could not connect to Airtouch" in str(exc_info.value)
 
-    # Assert
-    assert "Could not connect to Airtouch" in str(exception_info.value)
 
+# ---------------------------------------------------------------------------
+# get_capabilities
+# ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_get_airtouch_capabilities_success(mock_gateway):
+async def test_get_capabilities_success(mock_gateway):
     # Arrange
     service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await get_airtouch_capabilities(host="192.168.1.15", service=service)
+    result = await service.get_capabilities("192.168.1.15")
 
     # Assert
     assert result.connected is True
@@ -125,106 +59,96 @@ async def test_get_airtouch_capabilities_success(mock_gateway):
     assert ("get_capabilities", {"host": "192.168.1.15"}) in mock_gateway.calls
 
 
+# ---------------------------------------------------------------------------
+# set_all_ac_power
+# ---------------------------------------------------------------------------
+
 @pytest.mark.asyncio
-async def test_set_ac_power_success(mock_gateway):
+async def test_set_all_ac_power_turn_on_success(mock_gateway):
     # Arrange
-    power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
     service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await set_ac_power(
-        host="192.168.1.15",
-        air_conditioner_id=0,
-        request=power_request,
-        service=service,
+    status_info, action_results = await service.set_all_ac_power(
+        "192.168.1.15", AcPowerControl.TURN_ON
     )
 
     # Assert
-    assert result.status == "success"
-    assert result.message == "AC 0 power state set to TURN_ON"
+    assert status_info.host == "192.168.1.15"
+    assert status_info.connected is True
+    assert len(action_results) == 1
+    assert action_results[0].ac_id == 0
+    assert action_results[0].power_control == AcPowerControl.TURN_ON
+    assert action_results[0].applied is True
     assert (
-        "set_ac_power",
-        {
-            "host": "192.168.1.15",
-            "air_conditioner_id": 0,
-            "power_control": AcPowerControl.TURN_ON,
-        },
+        "set_all_ac_power",
+        {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_ON},
     ) in mock_gateway.calls
 
 
 @pytest.mark.asyncio
-async def test_set_ac_power_raises_control_error_on_gateway_failure(
-    mock_gateway,
-):
+async def test_set_all_ac_power_turn_off_success(mock_gateway):
     # Arrange
-    mock_gateway.control_success = False
-    power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
-    service = AcService(gateway=mock_gateway)
-
-    # Act & Assert
-    with pytest.raises(AirtouchControlError) as exception_info:
-        await set_ac_power(
-            host="192.168.1.15",
-            air_conditioner_id=0,
-            request=power_request,
-            service=service,
-        )
-    assert "Failed to set AC" in str(exception_info.value)
-
-
-@pytest.mark.asyncio
-async def test_set_ac_power_raises_control_error_on_invalid_ac(mock_gateway):
-    # Arrange
-    power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
-    service = AcService(gateway=mock_gateway)
-
-    # Act & Assert
-    with pytest.raises(AirtouchControlError) as exception_info:
-        await set_ac_power(
-            host="192.168.1.15",
-            air_conditioner_id=99,
-            request=power_request,
-            service=service,
-        )
-    assert "does not exist on host" in str(exception_info.value)
-
-
-@pytest.mark.asyncio
-async def test_set_ac_power_raises_control_error_on_unsupported_power(
-    mock_gateway,
-):
-    # Arrange
-    power_request = AcPowerRequest(power=AcPowerControl.TOGGLE)
-    service = AcService(gateway=mock_gateway)
-
-    # Act & Assert
-    with pytest.raises(AirtouchControlError) as exception_info:
-        await set_ac_power(
-            host="192.168.1.15",
-            air_conditioner_id=0,
-            request=power_request,
-            service=service,
-        )
-    assert "is not supported by AC" in str(exception_info.value)
-
-
-@pytest.mark.asyncio
-async def test_set_ac_mode_success(mock_gateway):
-    # Arrange
-    mode_request = AcModeRequest(mode=AcMode.COOL)
     service = AcService(gateway=mock_gateway)
 
     # Act
-    result = await set_ac_mode(
-        host="192.168.1.15",
-        air_conditioner_id=0,
-        request=mode_request,
-        service=service,
+    status_info, action_results = await service.set_all_ac_power(
+        "192.168.1.15", AcPowerControl.TURN_OFF
     )
 
     # Assert
-    assert result.status == "success"
-    assert result.message == "AC 0 mode set to COOL"
+    assert action_results[0].power_control == AcPowerControl.TURN_OFF
+    assert (
+        "set_all_ac_power",
+        {"host": "192.168.1.15", "power_control": AcPowerControl.TURN_OFF},
+    ) in mock_gateway.calls
+
+
+@pytest.mark.asyncio
+async def test_set_all_ac_power_raises_connection_error_when_gateway_disconnected(
+    mock_gateway,
+):
+    # Arrange
+    mock_gateway.connected_val = False
+    service = AcService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchConnectionError):
+        await service.set_all_ac_power("192.168.1.15", AcPowerControl.TURN_ON)
+
+
+# ---------------------------------------------------------------------------
+# update_air_conditioner — happy paths
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_update_ac_power_only_returns_power_field(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(power=AcPowerControl.TURN_ON)
+
+    # Act
+    applied = await service.update_air_conditioner("192.168.1.15", 0, patch)
+
+    # Assert
+    assert applied == [AcField.POWER]
+    assert (
+        "set_ac_power",
+        {"host": "192.168.1.15", "air_conditioner_id": 0, "power_control": AcPowerControl.TURN_ON},
+    ) in mock_gateway.calls
+
+
+@pytest.mark.asyncio
+async def test_update_ac_mode_only_returns_mode_field(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(mode=AcMode.COOL)
+
+    # Act
+    applied = await service.update_air_conditioner("192.168.1.15", 0, patch)
+
+    # Assert
+    assert applied == [AcField.MODE]
     assert (
         "set_ac_mode",
         {"host": "192.168.1.15", "air_conditioner_id": 0, "mode": AcMode.COOL},
@@ -232,39 +156,16 @@ async def test_set_ac_mode_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_ac_mode_raises_control_error_on_unsupported_mode(mock_gateway):
+async def test_update_ac_fan_speed_only_returns_fan_speed_field(mock_gateway):
     # Arrange
-    mode_request = AcModeRequest(mode=AcMode.DRY)
     service = AcService(gateway=mock_gateway)
-
-    # Act & Assert
-    with pytest.raises(AirtouchControlError) as exception_info:
-        await set_ac_mode(
-            host="192.168.1.15",
-            air_conditioner_id=0,
-            request=mode_request,
-            service=service,
-        )
-    assert "is not supported by AC" in str(exception_info.value)
-
-
-@pytest.mark.asyncio
-async def test_set_ac_fan_speed_success(mock_gateway):
-    # Arrange
-    fan_speed_request = AcFanSpeedRequest(fan_speed=AcFanSpeed.HIGH)
-    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(fan_speed=AcFanSpeed.HIGH)
 
     # Act
-    result = await set_ac_fan_speed(
-        host="192.168.1.15",
-        air_conditioner_id=0,
-        request=fan_speed_request,
-        service=service,
-    )
+    applied = await service.update_air_conditioner("192.168.1.15", 0, patch)
 
     # Assert
-    assert result.status == "success"
-    assert result.message == "AC 0 fan speed set to HIGH"
+    assert applied == [AcField.FAN_SPEED]
     assert (
         "set_ac_fan_speed",
         {"host": "192.168.1.15", "air_conditioner_id": 0, "fan_speed": AcFanSpeed.HIGH},
@@ -272,41 +173,16 @@ async def test_set_ac_fan_speed_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_ac_fan_speed_raises_control_error_on_unsupported_speed(
-    mock_gateway,
-):
+async def test_update_ac_temperature_only_returns_temperature_field(mock_gateway):
     # Arrange
-    fan_speed_request = AcFanSpeedRequest(fan_speed=AcFanSpeed.TURBO)
     service = AcService(gateway=mock_gateway)
-
-    # Act & Assert
-    with pytest.raises(AirtouchControlError) as exception_info:
-        await set_ac_fan_speed(
-            host="192.168.1.15",
-            air_conditioner_id=0,
-            request=fan_speed_request,
-            service=service,
-        )
-    assert "is not supported by AC" in str(exception_info.value)
-
-
-@pytest.mark.asyncio
-async def test_set_ac_temp_success(mock_gateway):
-    # Arrange
-    temp_request = AcTempRequest(temperature=24.0)
-    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(temperature=24.0)
 
     # Act
-    result = await set_ac_temp(
-        host="192.168.1.15",
-        air_conditioner_id=0,
-        request=temp_request,
-        service=service,
-    )
+    applied = await service.update_air_conditioner("192.168.1.15", 0, patch)
 
     # Assert
-    assert result.status == "success"
-    assert result.message == "AC 0 temperature set to 24.0"
+    assert applied == [AcField.TEMPERATURE]
     assert (
         "set_ac_temp",
         {"host": "192.168.1.15", "air_conditioner_id": 0, "temperature": 24.0},
@@ -314,17 +190,93 @@ async def test_set_ac_temp_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_ac_temp_raises_control_error_on_out_of_bounds(mock_gateway):
+async def test_update_ac_multiple_fields_returns_all_applied_fields(mock_gateway):
     # Arrange
-    temp_request = AcTempRequest(temperature=15.0)
     service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(power=AcPowerControl.TURN_ON, mode=AcMode.COOL, temperature=22.0)
+
+    # Act
+    applied = await service.update_air_conditioner("192.168.1.15", 0, patch)
+
+    # Assert
+    assert AcField.POWER in applied
+    assert AcField.MODE in applied
+    assert AcField.TEMPERATURE in applied
+    assert AcField.FAN_SPEED not in applied
+
+
+# ---------------------------------------------------------------------------
+# update_air_conditioner — error paths
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_update_ac_raises_control_error_on_invalid_ac(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(power=AcPowerControl.TURN_ON)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exception_info:
-        await set_ac_temp(
-            host="192.168.1.15",
-            air_conditioner_id=0,
-            request=temp_request,
-            service=service,
-        )
-    assert "is out of bounds for AC" in str(exception_info.value)
+    with pytest.raises(AirtouchControlError) as exc_info:
+        await service.update_air_conditioner("192.168.1.15", 99, patch)
+    assert "does not exist on the console" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_update_ac_raises_control_error_on_unsupported_power(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(power=AcPowerControl.TOGGLE)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exc_info:
+        await service.update_air_conditioner("192.168.1.15", 0, patch)
+    assert "is not supported by AC" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_update_ac_raises_control_error_on_unsupported_mode(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(mode=AcMode.DRY)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exc_info:
+        await service.update_air_conditioner("192.168.1.15", 0, patch)
+    assert "is not supported by AC" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_update_ac_raises_control_error_on_unsupported_fan_speed(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(fan_speed=AcFanSpeed.TURBO)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exc_info:
+        await service.update_air_conditioner("192.168.1.15", 0, patch)
+    assert "is not supported by AC" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_update_ac_raises_control_error_on_out_of_bounds_temperature(mock_gateway):
+    # Arrange
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(temperature=15.0)  # below min of 16.0
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exc_info:
+        await service.update_air_conditioner("192.168.1.15", 0, patch)
+    assert "is out of bounds for AC" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_update_ac_raises_control_error_on_gateway_failure(mock_gateway):
+    # Arrange
+    mock_gateway.control_success = False
+    service = AcService(gateway=mock_gateway)
+    patch = AcPatchRequest(power=AcPowerControl.TURN_ON)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exc_info:
+        await service.update_air_conditioner("192.168.1.15", 0, patch)
+    assert "Failed to set AC" in str(exc_info.value)

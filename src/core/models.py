@@ -1,12 +1,27 @@
 from enum import StrEnum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional
+
+
+class ActionStatus(StrEnum):
+    """Possible outcome statuses for a control operation response."""
+    SUCCESS = "success"
+    FAILURE = "failure"
+
 
 class AirtouchConnectionError(Exception):
     """Exception raised when connection to the AirTouch console fails."""
     def __init__(self, host: str) -> None:
         super().__init__(f"Could not connect to Airtouch console at {host}")
         self.host = host
+
+
+class AirtouchControlError(Exception):
+    """Exception raised when a control command to the AirTouch console fails validation or execution."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
 
 
 class AcPowerControl(StrEnum):
@@ -151,35 +166,7 @@ class AcPowerActionResult(BaseModel):
     applied: bool
 
 
-class AirtouchPowerResponse(BaseModel):
-    """Overall response for bulk AirTouch console power control operations."""
-    model: str
-    host: str
-    port: int
-    connected: bool
-    air_conditioners: List[AcPowerActionResult]
-
-
 class ActionResponse(BaseModel):
     """Generic status and message response for control operations."""
-    status: str
+    status: ActionStatus
     message: str
-
-
-class DiscoveryResponse(BaseModel):
-    """List of all discovered AirTouch devices on the local network."""
-    airtouch_devices: List[DiscoveredDevice]
-
-
-class SystemHealthResponse(BaseModel):
-    """Health check response containing application runtime status."""
-    status: str
-
-
-class AirtouchControlError(Exception):
-    """Exception raised when a control command to the AirTouch console fails validation or execution."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
-

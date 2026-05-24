@@ -1,31 +1,12 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
 
 from src.core.gateway import IAirtouchGateway, get_gateway
-from src.core.models import ZonePowerState, ActionResponse
+from src.core.registry import DeviceRegistry, get_registry
+from src.core.models import ActionResponse, ActionStatus
+from src.features.zones.models import ZonePatchRequest
 from src.features.zones.service import ZoneService
 
 router = APIRouter(prefix="/api/v1/airtouches", tags=["Zone Control"])
-
-
-class ZonePowerRequest(BaseModel):
-    """API request payload schema for changing Zone power state."""
-
-    power: ZonePowerState
-
-
-class ZoneTempRequest(BaseModel):
-    """API request payload schema for changing Zone target temperature."""
-
-    temperature: float = Field(..., description="Target temperature for the zone.")
-
-
-class ZoneDamperRequest(BaseModel):
-    """API request payload schema for changing Zone damper opening percentage."""
-
-    damper_percentage: int = Field(
-        ..., ge=0, le=100, description="Damper opening percentage (0-100)."
-    )
 
 
 def get_zone_service(
@@ -35,97 +16,37 @@ def get_zone_service(
     return ZoneService(gateway)
 
 
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/zones/{zone_id}/power",
+@router.patch(
+    "/{device_id}/air-conditioners/{air_conditioner_id}/zones/{zone_id}",
     response_model=ActionResponse,
 )
-async def set_zone_power(
-    host: str,
+async def patch_zone(
+    device_id: str,
     air_conditioner_id: int,
     zone_id: int,
-    request: ZonePowerRequest,
+    request: ZonePatchRequest,
     service: ZoneService = Depends(get_zone_service),
+    registry: DeviceRegistry = Depends(get_registry),
 ) -> ActionResponse:
-    """Sets the operational power state of a specific zone.
+    """Partially updates one or more properties of a specific zone.
+
+    At least one field (power, temperature, or damper_percentage) must be provided.
+    Fields not included in the request body are left unchanged.
 
     Args:
-        host: IP address or hostname of the AirTouch console.
+        device_id: The AirTouch device ID (from device discovery).
         air_conditioner_id: ID of the parent Air Conditioner unit.
-        zone_id: ID of the zone to control.
-        request: Request body containing the desired ZonePowerState.
+        zone_id: ID of the zone to update.
+        request: Sparse domain model containing the fields to update.
         service: The injected Zone service.
+        registry: The injected device registry for resolving device_id to host IP.
 
     Returns:
-        ActionResponse: A status confirmation of the command execution.
+        ActionResponse: A status confirmation listing the fields that were updated.
     """
-    await service.set_zone_power(
-        host, air_conditioner_id, zone_id, request.power
-    )
+    host = registry.resolve(device_id)
+    applied = await service.update_zone(host, air_conditioner_id, zone_id, request)
     return ActionResponse(
-        status="success",
-        message=f"Zone {zone_id} power state set to {request.power}",
-    )
-
-
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/zones/{zone_id}/temp",
-    response_model=ActionResponse,
-)
-async def set_zone_temp(
-    host: str,
-    air_conditioner_id: int,
-    zone_id: int,
-    request: ZoneTempRequest,
-    service: ZoneService = Depends(get_zone_service),
-) -> ActionResponse:
-    """Sets the target temperature of a specific temperature-controlled zone.
-
-    Args:
-        host: IP address or hostname of the AirTouch console.
-        air_conditioner_id: ID of the parent Air Conditioner unit.
-        zone_id: ID of the zone to control.
-        request: Request body containing the target temperature value.
-        service: The injected Zone service.
-
-    Returns:
-        ActionResponse: A status confirmation of the command execution.
-    """
-    await service.set_zone_temp(
-        host, air_conditioner_id, zone_id, request.temperature
-    )
-    return ActionResponse(
-        status="success",
-        message=f"Zone {zone_id} temperature set to {request.temperature}",
-    )
-
-
-@router.post(
-    "/{host}/air-conditioner/{air_conditioner_id}/zones/{zone_id}/damper",
-    response_model=ActionResponse,
-)
-async def set_zone_damper(
-    host: str,
-    air_conditioner_id: int,
-    zone_id: int,
-    request: ZoneDamperRequest,
-    service: ZoneService = Depends(get_zone_service),
-) -> ActionResponse:
-    """Sets the damper opening percentage of a specific damper-controlled zone.
-
-    Args:
-        host: IP address or hostname of the AirTouch console.
-        air_conditioner_id: ID of the parent Air Conditioner unit.
-        zone_id: ID of the zone to control.
-        request: Request body containing the damper opening percentage (0-100).
-        service: The injected Zone service.
-
-    Returns:
-        ActionResponse: A status confirmation of the command execution.
-    """
-    await service.set_zone_damper(
-        host, air_conditioner_id, zone_id, request.damper_percentage
-    )
-    return ActionResponse(
-        status="success",
-        message=f"Zone {zone_id} damper percentage set to {request.damper_percentage}",
+        status=ActionStatus.SUCCESS,
+        message=f"Zone {zone_id} updated: {', '.join(applied)}",
     )

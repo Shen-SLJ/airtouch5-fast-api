@@ -10,6 +10,7 @@ from src.core.models import (
     AcPowerActionResult,
     AirtouchControlError,
 )
+from src.features.ac.models import AcPatchRequest, AcField
 
 
 class AcService:
@@ -32,48 +33,30 @@ class AcService:
             if ac.ac_id == air_conditioner_id:
                 return ac
         raise AirtouchControlError(
-            f"AC {air_conditioner_id} does not exist on host {host}."
+            f"AC {air_conditioner_id} does not exist on the console."
         )
 
-    async def start_airtouch(
-        self, host: str
+    async def set_all_ac_power(
+        self, host: str, power: AcPowerControl
     ) -> Tuple[AirtouchStatus, List[AcPowerActionResult]]:
-        """Starts all Air Conditioner units on a given host console.
+        """Applies a power control command to all Air Conditioner units on a given console.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
+            power: The desired AcPowerControl state to apply to all AC units.
 
         Returns:
-            Tuple[AirtouchStatus, List[AcPowerActionResult]]: Console status and list of action results.
+            Tuple[AirtouchStatus, List[AcPowerActionResult]]: Console status and per-unit action results.
         """
-        action_results = await self._gateway.set_all_ac_power(
-            host, AcPowerControl.TURN_ON
-        )
-        status_info = await self._gateway.get_status(host)
-        return status_info, action_results
-
-    async def stop_airtouch(
-        self, host: str
-    ) -> Tuple[AirtouchStatus, List[AcPowerActionResult]]:
-        """Stops all Air Conditioner units on a given host console.
-
-        Args:
-            host: IP address or hostname of the AirTouch console.
-
-        Returns:
-            Tuple[AirtouchStatus, List[AcPowerActionResult]]: Console status and list of action results.
-        """
-        action_results = await self._gateway.set_all_ac_power(
-            host, AcPowerControl.TURN_OFF
-        )
+        action_results = await self._gateway.set_all_ac_power(host, power)
         status_info = await self._gateway.get_status(host)
         return status_info, action_results
 
     async def get_status(self, host: str) -> AirtouchStatus:
-        """Retrieves the comprehensive status of all Air Conditioners and Zones on a host console.
+        """Retrieves the comprehensive status of all Air Conditioners and Zones on a console.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
 
         Returns:
             AirtouchStatus: Detailed runtime status model.
@@ -81,23 +64,63 @@ class AcService:
         return await self._gateway.get_status(host)
 
     async def get_capabilities(self, host: str) -> AirtouchCapabilities:
-        """Retrieves supported hardware capabilities of a host console.
+        """Retrieves supported hardware capabilities of a console.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
 
         Returns:
             AirtouchCapabilities: Detailed hardware capabilities model.
         """
         return await self._gateway.get_capabilities(host)
 
-    async def set_ac_power(
+    async def update_air_conditioner(
+        self, host: str, air_conditioner_id: int, patch: AcPatchRequest
+    ) -> list[AcField]:
+        """Applies a sparse update to a specific Air Conditioner unit.
+
+        Only the fields present in the patch are applied. Performs capability and bounds
+        checks before each control call. Fields are applied in the order:
+        power → mode → fan_speed → temperature.
+
+        Args:
+            host: Private IP address of the AirTouch console (resolved from device ID).
+            air_conditioner_id: ID of the Air Conditioner unit to update.
+            patch: Domain model containing the fields to update.
+
+        Returns:
+            list[AcField]: The fields that were successfully applied.
+
+        Raises:
+            AirtouchControlError: If the AC does not exist, a value is unsupported, or a call fails.
+        """
+        applied: list[AcField] = []
+
+        if patch.power is not None:
+            await self._set_ac_power(host, air_conditioner_id, patch.power)
+            applied.append(AcField.POWER)
+
+        if patch.mode is not None:
+            await self._set_ac_mode(host, air_conditioner_id, patch.mode)
+            applied.append(AcField.MODE)
+
+        if patch.fan_speed is not None:
+            await self._set_ac_fan_speed(host, air_conditioner_id, patch.fan_speed)
+            applied.append(AcField.FAN_SPEED)
+
+        if patch.temperature is not None:
+            await self._set_ac_temp(host, air_conditioner_id, patch.temperature)
+            applied.append(AcField.TEMPERATURE)
+
+        return applied
+
+    async def _set_ac_power(
         self, host: str, air_conditioner_id: int, power: AcPowerControl
     ) -> None:
         """Sets the power state of a specific AC unit after performing capability checks.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the Air Conditioner unit to control.
             power: Desired AcPowerControl state.
 
@@ -118,13 +141,13 @@ class AcService:
                 f"Failed to set AC {air_conditioner_id} power state to {power}."
             )
 
-    async def set_ac_mode(
+    async def _set_ac_mode(
         self, host: str, air_conditioner_id: int, mode: AcMode
     ) -> None:
         """Sets the operational mode of a specific AC unit after performing capability checks.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the Air Conditioner unit to control.
             mode: Desired AcMode.
 
@@ -145,13 +168,13 @@ class AcService:
                 f"Failed to set AC {air_conditioner_id} mode to {mode}."
             )
 
-    async def set_ac_fan_speed(
+    async def _set_ac_fan_speed(
         self, host: str, air_conditioner_id: int, fan_speed: AcFanSpeed
     ) -> None:
         """Sets the fan speed of a specific AC unit after performing capability checks.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the Air Conditioner unit to control.
             fan_speed: Desired AcFanSpeed.
 
@@ -172,13 +195,13 @@ class AcService:
                 f"Failed to set AC {air_conditioner_id} fan speed to {fan_speed}."
             )
 
-    async def set_ac_temp(
+    async def _set_ac_temp(
         self, host: str, air_conditioner_id: int, temperature: float
     ) -> None:
         """Sets the target temperature of a specific AC unit after performing bounds checks.
 
         Args:
-            host: IP address or hostname of the AirTouch console.
+            host: Private IP address of the AirTouch console (resolved from device ID).
             air_conditioner_id: ID of the Air Conditioner unit to control.
             temperature: Target temperature value.
 

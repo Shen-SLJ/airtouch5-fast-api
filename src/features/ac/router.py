@@ -7,8 +7,8 @@ from src.core.models import (
     AirtouchStatus,
     AirtouchCapabilities,
     AcPowerControl,
-    ActionResponse,
-    ActionStatus,
+    ControlResponse,
+    ControlStatus,
 )
 from src.features.ac.models import AcPatchRequest, AirtouchPowerResponse
 from src.features.ac.service import IAcService, AcService
@@ -98,7 +98,7 @@ async def patch_all_air_conditioners(
 
 @router.patch(
     "/{device_id}/air-conditioners/{air_conditioner_id}",
-    response_model=ActionResponse,
+    response_model=ControlResponse,
 )
 async def patch_air_conditioner(
     device_id: str,
@@ -106,7 +106,7 @@ async def patch_air_conditioner(
     request: AcPatchRequest,
     service: IAcService = Depends(get_ac_service),
     registry: IDeviceRegistry = Depends(get_registry),
-) -> ActionResponse:
+) -> ControlResponse:
     """Partially updates one or more properties of a specific Air Conditioner unit.
 
     At least one field (power, mode, fan_speed, or temperature) must be provided.
@@ -120,11 +120,11 @@ async def patch_air_conditioner(
         registry: The injected device registry for resolving device_id to device handle.
 
     Returns:
-        ActionResponse: A status confirmation listing the fields that were updated.
+        ControlResponse: A status confirmation listing the fields that were updated.
     """
     device_handle = registry.resolve(device_id)
     applied = await service.update_air_conditioner(device_handle, air_conditioner_id, request)
-    return ActionResponse(
-        status=ActionStatus.SUCCESS,
+    return ControlResponse(
+        status=ControlStatus.SUCCESS,
         message=f"AC {air_conditioner_id} updated: {', '.join(applied)}",
     )

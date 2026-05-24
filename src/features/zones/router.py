@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from src.core.gateway import IAirtouchGateway, get_gateway
 from src.core.registry import IDeviceRegistry, get_registry
-from src.core.models import ActionResponse, ActionStatus
+from src.core.models import ControlResponse, ControlStatus
 from src.features.zones.models import ZonePatchRequest
 from src.features.zones.service import IZoneService, ZoneService
 
@@ -18,7 +18,7 @@ def get_zone_service(
 
 @router.patch(
     "/{device_id}/air-conditioners/{air_conditioner_id}/zones/{zone_id}",
-    response_model=ActionResponse,
+    response_model=ControlResponse,
 )
 async def patch_zone(
     device_id: str,
@@ -27,7 +27,7 @@ async def patch_zone(
     request: ZonePatchRequest,
     service: IZoneService = Depends(get_zone_service),
     registry: IDeviceRegistry = Depends(get_registry),
-) -> ActionResponse:
+) -> ControlResponse:
     """Partially updates one or more properties of a specific zone.
 
     At least one field (power, temperature, or damper_percentage) must be provided.
@@ -42,11 +42,11 @@ async def patch_zone(
         registry: The injected device registry for resolving device_id to device handle.
 
     Returns:
-        ActionResponse: A status confirmation listing the fields that were updated.
+        ControlResponse: A status confirmation listing the fields that were updated.
     """
     device_handle = registry.resolve(device_id)
     applied = await service.update_zone(device_handle, air_conditioner_id, zone_id, request)
-    return ActionResponse(
-        status=ActionStatus.SUCCESS,
+    return ControlResponse(
+        status=ControlStatus.SUCCESS,
         message=f"Zone {zone_id} updated: {', '.join(applied)}",
     )

@@ -4,8 +4,8 @@ from src.core.models import (
     ZonePowerState,
     ZoneStatus,
     ZoneControlMethod,
-    AirtouchControlError,
 )
+from src.features.zones.exceptions import ZoneControlError
 from src.features.zones.models import ZonePatchRequest, ZoneField
 
 
@@ -45,10 +45,10 @@ class ZoneService(IZoneService):
                 for zone in ac.zones:
                     if zone.zone_id == zone_id:
                         return zone
-                raise AirtouchControlError(
+                raise ZoneControlError(
                     f"Zone {zone_id} does not exist on AC {air_conditioner_id}."
                 )
-        raise AirtouchControlError(
+        raise ZoneControlError(
             f"AC {air_conditioner_id} does not exist on the console."
         )
 
@@ -75,7 +75,7 @@ class ZoneService(IZoneService):
             list[ZoneField]: The fields that were successfully applied.
 
         Raises:
-            AirtouchControlError: If the AC or zone does not exist, a value is incompatible, or a call fails.
+            ZoneControlError: If the AC or zone does not exist, a value is incompatible, or a call fails.
         """
         applied: list[ZoneField] = []
 
@@ -109,7 +109,7 @@ class ZoneService(IZoneService):
             power: Desired ZonePowerState.
 
         Raises:
-            AirtouchControlError: If the AC or zone does not exist or the call fails.
+            ZoneControlError: If the AC or zone does not exist or the call fails.
         """
         await self._get_zone_status(device_handle, air_conditioner_id, zone_id)
 
@@ -117,7 +117,7 @@ class ZoneService(IZoneService):
             device_handle, air_conditioner_id, zone_id, power
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise ZoneControlError(
                 f"Failed to set zone {zone_id} power state to {power}."
             )
 
@@ -137,11 +137,11 @@ class ZoneService(IZoneService):
             temperature: Target temperature value.
 
         Raises:
-            AirtouchControlError: If AC or zone does not exist, zone is not temperature-controlled, or call fails.
+            ZoneControlError: If AC or zone does not exist, zone is not temperature-controlled, or call fails.
         """
         zone = await self._get_zone_status(device_handle, air_conditioner_id, zone_id)
         if zone.control_method != ZoneControlMethod.TEMPERATURE:
-            raise AirtouchControlError(
+            raise ZoneControlError(
                 f"Zone {zone_id} is not in TEMPERATURE control mode (currently {zone.control_method})."
             )
 
@@ -149,7 +149,7 @@ class ZoneService(IZoneService):
             device_handle, air_conditioner_id, zone_id, temperature
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise ZoneControlError(
                 f"Failed to set zone {zone_id} temperature to {temperature}."
             )
 
@@ -169,7 +169,7 @@ class ZoneService(IZoneService):
             damper_percentage: Damper opening percentage (0-100).
 
         Raises:
-            AirtouchControlError: If AC or zone does not exist or the call fails.
+            ZoneControlError: If AC or zone does not exist or the call fails.
         """
         await self._get_zone_status(device_handle, air_conditioner_id, zone_id)
 
@@ -177,6 +177,6 @@ class ZoneService(IZoneService):
             device_handle, air_conditioner_id, zone_id, damper_percentage
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise ZoneControlError(
                 f"Failed to set zone {zone_id} damper percentage to {damper_percentage}."
             )

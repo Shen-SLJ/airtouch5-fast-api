@@ -1,7 +1,8 @@
 import pytest
 from src.features.zones.service import ZoneService
 from src.features.zones.models import ZonePatchRequest, ZoneField
-from src.core.models import ZonePowerState, AirtouchControlError
+from src.core.models import ZonePowerState
+from src.features.zones.exceptions import ZoneControlError
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +101,7 @@ async def test_update_zone_raises_control_error_on_invalid_ac(mock_gateway):
     patch = ZonePatchRequest(power=ZonePowerState.ON)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(ZoneControlError) as exc_info:
         await service.update_zone("192.168.1.15", 99, 1, patch)
     assert "does not exist on the console" in str(exc_info.value)
 
@@ -112,7 +113,7 @@ async def test_update_zone_raises_control_error_on_invalid_zone(mock_gateway):
     patch = ZonePatchRequest(power=ZonePowerState.ON)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(ZoneControlError) as exc_info:
         await service.update_zone("192.168.1.15", 0, 99, patch)
     assert "does not exist on AC" in str(exc_info.value)
 
@@ -126,7 +127,7 @@ async def test_update_zone_raises_control_error_on_temperature_in_damper_control
     patch = ZonePatchRequest(temperature=23.0)  # zone 2 is DAMPER-controlled
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(ZoneControlError) as exc_info:
         await service.update_zone("192.168.1.15", 0, 2, patch)
     assert "is not in TEMPERATURE control mode" in str(exc_info.value)
 
@@ -139,7 +140,7 @@ async def test_update_zone_raises_control_error_on_gateway_power_failure(mock_ga
     patch = ZonePatchRequest(power=ZonePowerState.ON)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(ZoneControlError) as exc_info:
         await service.update_zone("192.168.1.15", 0, 1, patch)
     assert "Failed to set zone" in str(exc_info.value)
 
@@ -152,7 +153,7 @@ async def test_update_zone_raises_control_error_on_gateway_temp_failure(mock_gat
     patch = ZonePatchRequest(temperature=23.0)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(ZoneControlError) as exc_info:
         await service.update_zone("192.168.1.15", 0, 1, patch)
     assert "Failed to set zone" in str(exc_info.value)
 
@@ -165,6 +166,6 @@ async def test_update_zone_raises_control_error_on_gateway_damper_failure(mock_g
     patch = ZonePatchRequest(damper_percentage=75)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(ZoneControlError) as exc_info:
         await service.update_zone("192.168.1.15", 0, 2, patch)
     assert "Failed to set zone" in str(exc_info.value)

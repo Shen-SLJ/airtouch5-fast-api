@@ -3,25 +3,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 
-class ActionStatus(StrEnum):
+class ControlStatus(StrEnum):
     """Possible outcome statuses for a control operation response."""
     SUCCESS = "success"
     FAILURE = "failure"
-
-
-class AirtouchConnectionError(Exception):
-    """Exception raised when connection to the AirTouch console fails."""
-    def __init__(self, device_handle: str) -> None:
-        super().__init__(f"Could not connect to Airtouch console at {device_handle}")
-        self.device_handle = device_handle
-
-
-class AirtouchControlError(Exception):
-    """Exception raised when a control command to the AirTouch console fails validation or execution."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-        self.message = message
 
 
 class AcPowerControl(StrEnum):
@@ -166,7 +151,7 @@ class AcPowerActionResult(BaseModel):
     applied: bool
 
 
-class ActionResponse(BaseModel):
+class ControlResponse(BaseModel):
     """Generic status and message response for control operations."""
-    status: ActionStatus
+    status: ControlStatus
     message: str

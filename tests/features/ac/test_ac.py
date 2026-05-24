@@ -1,12 +1,12 @@
 import pytest
 from src.features.ac.service import AcService
 from src.features.ac.models import AcPatchRequest, AcField
+from src.core.errors.exceptions import AirtouchConnectionError
+from src.features.ac.exceptions import AcControlError
 from src.core.models import (
     AcPowerControl,
     AcMode,
     AcFanSpeed,
-    AirtouchConnectionError,
-    AirtouchControlError,
 )
 
 
@@ -216,7 +216,7 @@ async def test_update_ac_raises_control_error_on_invalid_ac(mock_gateway):
     patch = AcPatchRequest(power=AcPowerControl.TURN_ON)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(AcControlError) as exc_info:
         await service.update_air_conditioner("192.168.1.15", 99, patch)
     assert "does not exist on the console" in str(exc_info.value)
 
@@ -228,7 +228,7 @@ async def test_update_ac_raises_control_error_on_unsupported_power(mock_gateway)
     patch = AcPatchRequest(power=AcPowerControl.TOGGLE)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(AcControlError) as exc_info:
         await service.update_air_conditioner("192.168.1.15", 0, patch)
     assert "is not supported by AC" in str(exc_info.value)
 
@@ -240,7 +240,7 @@ async def test_update_ac_raises_control_error_on_unsupported_mode(mock_gateway):
     patch = AcPatchRequest(mode=AcMode.DRY)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(AcControlError) as exc_info:
         await service.update_air_conditioner("192.168.1.15", 0, patch)
     assert "is not supported by AC" in str(exc_info.value)
 
@@ -252,7 +252,7 @@ async def test_update_ac_raises_control_error_on_unsupported_fan_speed(mock_gate
     patch = AcPatchRequest(fan_speed=AcFanSpeed.TURBO)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(AcControlError) as exc_info:
         await service.update_air_conditioner("192.168.1.15", 0, patch)
     assert "is not supported by AC" in str(exc_info.value)
 
@@ -264,7 +264,7 @@ async def test_update_ac_raises_control_error_on_out_of_bounds_temperature(mock_
     patch = AcPatchRequest(temperature=15.0)  # below min of 16.0
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(AcControlError) as exc_info:
         await service.update_air_conditioner("192.168.1.15", 0, patch)
     assert "is out of bounds for AC" in str(exc_info.value)
 
@@ -277,6 +277,6 @@ async def test_update_ac_raises_control_error_on_gateway_failure(mock_gateway):
     patch = AcPatchRequest(power=AcPowerControl.TURN_ON)
 
     # Act & Assert
-    with pytest.raises(AirtouchControlError) as exc_info:
+    with pytest.raises(AcControlError) as exc_info:
         await service.update_air_conditioner("192.168.1.15", 0, patch)
     assert "Failed to set AC" in str(exc_info.value)

@@ -1,14 +1,19 @@
 from contextlib import asynccontextmanager, AsyncExitStack
 from typing import AsyncContextManager, Callable, Sequence
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from src.features.discovery.router import router as discovery_router
 from src.features.ac.router import router as ac_router
 from src.features.zones.router import router as zones_router
 from src.core.system.router import router as system_router
 from src.core.gateway.pyairtouch import pyairtouch_lifespan
-from src.core.models import AirtouchConnectionError, AirtouchControlError
+from src.core.errors.exceptions import DomainError
+from src.core.errors.exception_handlers import (
+    domain_error_handler,
+    request_validation_error_handler,
+    global_exception_handler,
+)
 
 LifespanCallable = Callable[[FastAPI], AsyncContextManager[None]]
 
@@ -36,28 +41,10 @@ app = FastAPI(
     lifespan=global_lifespan,
 )
 
-
-@app.exception_handler(AirtouchConnectionError)
-async def airtouch_connection_error_handler(
-    _request, exception: AirtouchConnectionError
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=503,
-        content={
-            "detail": f"Could not connect to Airtouch console at {exception.device_handle}"
-        },
-    )
-
-
-@app.exception_handler(AirtouchControlError)
-async def airtouch_control_error_handler(
-    _request, exception: AirtouchControlError
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=400,
-        content={"detail": exception.message},
-    )
-
+# Register business domain and validation exception handlers natively
+app.add_exception_handler(DomainError, domain_error_handler)
+app.add_exception_handler(RequestValidationError, request_validation_error_handler)
+app.add_exception_handler(Exception, global_exception_handler)
 
 app.include_router(system_router)
 app.include_router(discovery_router)

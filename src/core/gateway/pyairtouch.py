@@ -6,8 +6,8 @@ from enum import Enum
 
 from src.core.gateway.base import IAirtouchGateway
 from src.core.registry import DeviceRegistry
+from src.core.errors.exceptions import AirtouchConnectionError
 from src.core.models import (
-    AirtouchConnectionError,
     DiscoveredDevice,
     AirtouchStatus,
     AirtouchCapabilities,

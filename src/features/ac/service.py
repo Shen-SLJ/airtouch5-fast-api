@@ -9,8 +9,8 @@ from src.core.models import (
     AcFanSpeed,
     AcCapabilities,
     AcPowerActionResult,
-    AirtouchControlError,
 )
+from src.features.ac.exceptions import AcControlError
 from src.features.ac.models import AcPatchRequest, AcField
 
 
@@ -61,7 +61,7 @@ class AcService(IAcService):
         for ac in capabilities.air_conditioners:
             if ac.ac_id == air_conditioner_id:
                 return ac
-        raise AirtouchControlError(
+        raise AcControlError(
             f"AC {air_conditioner_id} does not exist on the console."
         )
 
@@ -121,7 +121,7 @@ class AcService(IAcService):
             list[AcField]: The fields that were successfully applied.
 
         Raises:
-            AirtouchControlError: If the AC does not exist, a value is unsupported, or a call fails.
+            AcControlError: If the AC does not exist, a value is unsupported, or a call fails.
         """
         applied: list[AcField] = []
 
@@ -154,11 +154,11 @@ class AcService(IAcService):
             power: Desired AcPowerControl state.
 
         Raises:
-            AirtouchControlError: If the AC does not exist, power command is unsupported, or call fails.
+            AcControlError: If the AC does not exist, power command is unsupported, or call fails.
         """
         ac = await self._get_ac_capabilities(device_handle, air_conditioner_id)
         if power not in ac.supported_power_controls:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Power control state {power} is not supported by AC {air_conditioner_id}."
             )
 
@@ -166,7 +166,7 @@ class AcService(IAcService):
             device_handle, air_conditioner_id, power
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Failed to set AC {air_conditioner_id} power state to {power}."
             )
 
@@ -181,11 +181,11 @@ class AcService(IAcService):
             mode: Desired AcMode.
 
         Raises:
-            AirtouchControlError: If the AC does not exist, mode is unsupported, or call fails.
+            AcControlError: If the AC does not exist, mode is unsupported, or call fails.
         """
         ac = await self._get_ac_capabilities(device_handle, air_conditioner_id)
         if mode not in ac.supported_modes:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Operational mode {mode} is not supported by AC {air_conditioner_id}."
             )
 
@@ -193,7 +193,7 @@ class AcService(IAcService):
             device_handle, air_conditioner_id, mode
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Failed to set AC {air_conditioner_id} mode to {mode}."
             )
 
@@ -208,11 +208,11 @@ class AcService(IAcService):
             fan_speed: Desired AcFanSpeed.
 
         Raises:
-            AirtouchControlError: If the AC does not exist, fan speed is unsupported, or call fails.
+            AcControlError: If the AC does not exist, fan speed is unsupported, or call fails.
         """
         ac = await self._get_ac_capabilities(device_handle, air_conditioner_id)
         if fan_speed not in ac.supported_fan_speeds:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Fan speed {fan_speed} is not supported by AC {air_conditioner_id}."
             )
 
@@ -220,7 +220,7 @@ class AcService(IAcService):
             device_handle, air_conditioner_id, fan_speed
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Failed to set AC {air_conditioner_id} fan speed to {fan_speed}."
             )
 
@@ -235,11 +235,11 @@ class AcService(IAcService):
             temperature: Target temperature value.
 
         Raises:
-            AirtouchControlError: If AC does not exist, temp is out of bounds, or call fails.
+            AcControlError: If AC does not exist, temp is out of bounds, or call fails.
         """
         ac = await self._get_ac_capabilities(device_handle, air_conditioner_id)
         if not (ac.min_target_temperature <= temperature <= ac.max_target_temperature):
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Temperature {temperature} is out of bounds for AC {air_conditioner_id} "
                 f"({ac.min_target_temperature} - {ac.max_target_temperature})."
             )
@@ -248,6 +248,6 @@ class AcService(IAcService):
             device_handle, air_conditioner_id, temperature
         )
         if not is_successful:
-            raise AirtouchControlError(
+            raise AcControlError(
                 f"Failed to set AC {air_conditioner_id} temperature to {temperature}."
             )

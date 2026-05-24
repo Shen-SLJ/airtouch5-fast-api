@@ -1,8 +1,8 @@
 import pytest
 from typing import List
 from src.core.gateway import IAirtouchGateway
+from src.core.errors.exceptions import AirtouchConnectionError
 from src.core.models import (
-    AirtouchConnectionError,
     DiscoveredDevice,
     AirtouchStatus,
     AirtouchCapabilities,

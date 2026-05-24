@@ -10,7 +10,7 @@ from src.core.models import (
     ActionResponse,
     ActionStatus,
 )
-from src.features.ac.models import AcPatchRequest, AcField, AirtouchPowerResponse
+from src.features.ac.models import AcPatchRequest, AirtouchPowerResponse
 from src.features.ac.service import IAcService, AcService
 
 router = APIRouter(prefix="/api/v1/airtouches", tags=["AC Control"])

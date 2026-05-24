@@ -8,7 +8,7 @@ from src.features.ac.router import router as ac_router
 from src.features.zones.router import router as zones_router
 from src.core.system.router import router as system_router
 from src.core.gateway.pyairtouch import pyairtouch_lifespan
-from src.core.models import AirtouchConnectionError
+from src.core.models import AirtouchConnectionError, AirtouchControlError
 
 LifespanCallable = Callable[[FastAPI], AsyncContextManager[None]]
 
@@ -46,6 +46,16 @@ async def airtouch_connection_error_handler(
         content={
             "detail": f"Could not connect to Airtouch console at {exception.host}"
         },
+    )
+
+
+@app.exception_handler(AirtouchControlError)
+async def airtouch_control_error_handler(
+    _request, exception: AirtouchControlError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={"detail": exception.message},
     )
 
 

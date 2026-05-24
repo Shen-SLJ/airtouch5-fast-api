@@ -234,11 +234,8 @@ class PyAirtouchGateway(AirtouchGateway):
             return False
 
         pyairtouch_power = getattr(pyairtouch.AcPowerControl, power_control.name)
-        if pyairtouch_power in air_conditioner.supported_power_controls:
-            await air_conditioner.set_power(pyairtouch_power)
-            return True
-
-        return False
+        await air_conditioner.set_power(pyairtouch_power)
+        return True
 
     async def _get_air_conditioner(
         self, host: str, air_conditioner_id: int
@@ -259,15 +256,13 @@ class PyAirtouchGateway(AirtouchGateway):
 
         pyairtouch_power = getattr(pyairtouch.AcPowerControl, power_control.name)
         for air_conditioner in airtouch_instance.air_conditioners:
-            is_supported = pyairtouch_power in air_conditioner.supported_power_controls
-            if is_supported:
-                await air_conditioner.set_power(pyairtouch_power)
+            await air_conditioner.set_power(pyairtouch_power)
             action_results.append(
                 AcPowerActionResult(
                     ac_id=air_conditioner.ac_id,
                     name=air_conditioner.name,
                     power_control=power_control,
-                    applied=is_supported,
+                    applied=True,
                 )
             )
 
@@ -281,11 +276,8 @@ class PyAirtouchGateway(AirtouchGateway):
             return False
 
         pyairtouch_mode = getattr(pyairtouch.AcMode, mode.name)
-        if pyairtouch_mode in air_conditioner.supported_modes:
-            await air_conditioner.set_mode(pyairtouch_mode)
-            return True
-
-        return False
+        await air_conditioner.set_mode(pyairtouch_mode)
+        return True
 
     async def set_ac_fan_speed(
         self, host: str, air_conditioner_id: int, fan_speed: AcFanSpeed
@@ -295,11 +287,8 @@ class PyAirtouchGateway(AirtouchGateway):
             return False
 
         pyairtouch_fan = getattr(pyairtouch.AcFanSpeed, fan_speed.name)
-        if pyairtouch_fan in air_conditioner.supported_fan_speeds:
-            await air_conditioner.set_fan_speed(pyairtouch_fan)
-            return True
-
-        return False
+        await air_conditioner.set_fan_speed(pyairtouch_fan)
+        return True
 
     async def set_ac_temp(
         self, host: str, air_conditioner_id: int, temperature: float
@@ -308,15 +297,8 @@ class PyAirtouchGateway(AirtouchGateway):
         if air_conditioner is None:
             return False
 
-        if (
-            air_conditioner.min_target_temperature
-            <= temperature
-            <= air_conditioner.max_target_temperature
-        ):
-            await air_conditioner.set_target_temperature(temperature)
-            return True
-
-        return False
+        await air_conditioner.set_target_temperature(temperature)
+        return True
 
     async def set_zone_power(
         self,
@@ -330,11 +312,8 @@ class PyAirtouchGateway(AirtouchGateway):
             return False
 
         pyairtouch_power = getattr(pyairtouch.ZonePowerState, power_state.name)
-        if pyairtouch_power in zone.supported_power_states:
-            await zone.set_power(pyairtouch_power)
-            return True
-
-        return False
+        await zone.set_power(pyairtouch_power)
+        return True
 
     async def _get_zone(
         self, host: str, air_conditioner_id: int, zone_id: int
@@ -356,11 +335,8 @@ class PyAirtouchGateway(AirtouchGateway):
         if zone is None:
             return False
 
-        if zone.control_method == pyairtouch.ZoneControlMethod.TEMPERATURE:
-            await zone.set_target_temperature(temperature)
-            return True
-
-        return False
+        await zone.set_target_temperature(temperature)
+        return True
 
     async def set_zone_damper(
         self, host: str, air_conditioner_id: int, zone_id: int, damper_percentage: int
@@ -369,11 +345,8 @@ class PyAirtouchGateway(AirtouchGateway):
         if zone is None:
             return False
 
-        if 0 <= damper_percentage <= 100:
-            await zone.set_damper_percentage(damper_percentage)
-            return True
-
-        return False
+        await zone.set_damper_percentage(damper_percentage)
+        return True
 
     async def close_connection(self) -> None:
         await self._connection_pool.close_all()

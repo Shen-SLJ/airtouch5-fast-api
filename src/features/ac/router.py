@@ -52,7 +52,14 @@ async def start_airtouch(
     Returns:
         AirtouchPowerResponse: Operational status showing which AC units were successfully turned on.
     """
-    return await service.start_airtouch(host)
+    status_info, action_results = await service.start_airtouch(host)
+    return AirtouchPowerResponse(
+        model=status_info.model,
+        host=status_info.host,
+        port=status_info.port,
+        connected=status_info.connected,
+        air_conditioners=action_results,
+    )
 
 
 @router.post("/{host}/stop", response_model=AirtouchPowerResponse)
@@ -68,7 +75,14 @@ async def stop_airtouch(
     Returns:
         AirtouchPowerResponse: Operational status showing which AC units were successfully turned off.
     """
-    return await service.stop_airtouch(host)
+    status_info, action_results = await service.stop_airtouch(host)
+    return AirtouchPowerResponse(
+        model=status_info.model,
+        host=status_info.host,
+        port=status_info.port,
+        connected=status_info.connected,
+        air_conditioners=action_results,
+    )
 
 
 @router.get("/{host}/status", response_model=AirtouchStatus)
@@ -124,7 +138,11 @@ async def set_ac_power(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_ac_power(host, air_conditioner_id, request.power)
+    await service.set_ac_power(host, air_conditioner_id, request.power)
+    return ActionResponse(
+        status="success",
+        message=f"AC {air_conditioner_id} power state set to {request.power}",
+    )
 
 
 @router.post(
@@ -148,7 +166,11 @@ async def set_ac_mode(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_ac_mode(host, air_conditioner_id, request.mode)
+    await service.set_ac_mode(host, air_conditioner_id, request.mode)
+    return ActionResponse(
+        status="success",
+        message=f"AC {air_conditioner_id} mode set to {request.mode}",
+    )
 
 
 @router.post(
@@ -172,8 +194,10 @@ async def set_ac_fan_speed(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_ac_fan_speed(
-        host, air_conditioner_id, request.fan_speed
+    await service.set_ac_fan_speed(host, air_conditioner_id, request.fan_speed)
+    return ActionResponse(
+        status="success",
+        message=f"AC {air_conditioner_id} fan speed set to {request.fan_speed}",
     )
 
 
@@ -198,4 +222,8 @@ async def set_ac_temp(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_ac_temp(host, air_conditioner_id, request.temperature)
+    await service.set_ac_temp(host, air_conditioner_id, request.temperature)
+    return ActionResponse(
+        status="success",
+        message=f"AC {air_conditioner_id} temperature set to {request.temperature}",
+    )

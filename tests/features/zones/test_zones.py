@@ -1,5 +1,4 @@
 import pytest
-from fastapi import HTTPException, status
 from src.features.zones.router import (
     set_zone_power,
     set_zone_temp,
@@ -9,7 +8,7 @@ from src.features.zones.router import (
     ZoneDamperRequest,
 )
 from src.features.zones.service import ZoneService
-from src.core.models import ZonePowerState
+from src.core.models import ZonePowerState, AirtouchControlError
 
 
 @pytest.mark.asyncio
@@ -42,14 +41,14 @@ async def test_set_zone_power_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_power_raises_http_exception_on_gateway_failure(mock_gateway):
+async def test_set_zone_power_raises_control_error_on_gateway_failure(mock_gateway):
     # Arrange
     mock_gateway.control_success = False
     power_request = ZonePowerRequest(power=ZonePowerState.ON)
     service = ZoneService(gateway=mock_gateway)
 
-    # Act
-    with pytest.raises(HTTPException) as exception_info:
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
         await set_zone_power(
             host="192.168.1.15",
             air_conditioner_id=0,
@@ -57,10 +56,43 @@ async def test_set_zone_power_raises_http_exception_on_gateway_failure(mock_gate
             request=power_request,
             service=service,
         )
+    assert "Failed to set zone" in str(exception_info.value)
 
-    # Assert
-    assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
-    assert "Failed to set zone" in exception_info.value.detail
+
+@pytest.mark.asyncio
+async def test_set_zone_power_raises_control_error_on_invalid_ac(mock_gateway):
+    # Arrange
+    power_request = ZonePowerRequest(power=ZonePowerState.ON)
+    service = ZoneService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_zone_power(
+            host="192.168.1.15",
+            air_conditioner_id=99,
+            zone_id=1,
+            request=power_request,
+            service=service,
+        )
+    assert "does not exist on host" in str(exception_info.value)
+
+
+@pytest.mark.asyncio
+async def test_set_zone_power_raises_control_error_on_invalid_zone(mock_gateway):
+    # Arrange
+    power_request = ZonePowerRequest(power=ZonePowerState.ON)
+    service = ZoneService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_zone_power(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            zone_id=99,
+            request=power_request,
+            service=service,
+        )
+    assert "does not exist on AC" in str(exception_info.value)
 
 
 @pytest.mark.asyncio
@@ -93,7 +125,7 @@ async def test_set_zone_temp_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(
+async def test_set_zone_temperature_raises_control_error_on_gateway_failure(
     mock_gateway,
 ):
     # Arrange
@@ -101,8 +133,8 @@ async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(
     temperature_request = ZoneTempRequest(temperature=23.0)
     service = ZoneService(gateway=mock_gateway)
 
-    # Act
-    with pytest.raises(HTTPException) as exception_info:
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
         await set_zone_temp(
             host="192.168.1.15",
             air_conditioner_id=0,
@@ -110,9 +142,27 @@ async def test_set_zone_temperature_raises_http_exception_on_gateway_failure(
             request=temperature_request,
             service=service,
         )
+    assert "Failed to set zone" in str(exception_info.value)
 
-    # Assert
-    assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
+
+@pytest.mark.asyncio
+async def test_set_zone_temp_raises_control_error_on_damper_controlled_zone(
+    mock_gateway,
+):
+    # Arrange
+    temperature_request = ZoneTempRequest(temperature=23.0)
+    service = ZoneService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_zone_temp(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            zone_id=2,
+            request=temperature_request,
+            service=service,
+        )
+    assert "is not in TEMPERATURE control mode" in str(exception_info.value)
 
 
 @pytest.mark.asyncio
@@ -145,14 +195,14 @@ async def test_set_zone_damper_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_zone_damper_raises_http_exception_on_gateway_failure(mock_gateway):
+async def test_set_zone_damper_raises_control_error_on_gateway_failure(mock_gateway):
     # Arrange
     mock_gateway.control_success = False
     damper_request = ZoneDamperRequest(damper_percentage=75)
     service = ZoneService(gateway=mock_gateway)
 
-    # Act
-    with pytest.raises(HTTPException) as exception_info:
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
         await set_zone_damper(
             host="192.168.1.15",
             air_conditioner_id=0,
@@ -160,6 +210,20 @@ async def test_set_zone_damper_raises_http_exception_on_gateway_failure(mock_gat
             request=damper_request,
             service=service,
         )
+    assert "Failed to set zone" in str(exception_info.value)
 
-    # Assert
-    assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
+
+@pytest.mark.asyncio
+async def test_set_zone_damper_raises_control_error_on_out_of_bounds(mock_gateway):
+    # Arrange
+    service = ZoneService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await service.set_zone_damper(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            zone_id=2,
+            damper_percentage=105,
+        )
+    assert "is out of bounds" in str(exception_info.value)

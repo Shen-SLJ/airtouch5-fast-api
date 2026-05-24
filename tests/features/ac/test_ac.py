@@ -1,5 +1,4 @@
 import pytest
-from fastapi import HTTPException, status
 from src.features.ac.router import (
     start_airtouch,
     stop_airtouch,
@@ -15,7 +14,13 @@ from src.features.ac.router import (
     AcTempRequest,
 )
 from src.features.ac.service import AcService
-from src.core.models import AcPowerControl, AcMode, AcFanSpeed, AirtouchConnectionError
+from src.core.models import (
+    AcPowerControl,
+    AcMode,
+    AcFanSpeed,
+    AirtouchConnectionError,
+    AirtouchControlError,
+)
 
 
 @pytest.mark.asyncio
@@ -148,7 +153,7 @@ async def test_set_ac_power_success(mock_gateway):
 
 
 @pytest.mark.asyncio
-async def test_set_ac_power_raises_http_exception_on_gateway_failure(
+async def test_set_ac_power_raises_control_error_on_gateway_failure(
     mock_gateway,
 ):
     # Arrange
@@ -156,17 +161,51 @@ async def test_set_ac_power_raises_http_exception_on_gateway_failure(
     power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
     service = AcService(gateway=mock_gateway)
 
-    # Act
-    with pytest.raises(HTTPException) as exception_info:
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
         await set_ac_power(
             host="192.168.1.15",
             air_conditioner_id=0,
             request=power_request,
             service=service,
         )
+    assert "Failed to set AC" in str(exception_info.value)
 
-    # Assert
-    assert exception_info.value.status_code == status.HTTP_400_BAD_REQUEST
+
+@pytest.mark.asyncio
+async def test_set_ac_power_raises_control_error_on_invalid_ac(mock_gateway):
+    # Arrange
+    power_request = AcPowerRequest(power=AcPowerControl.TURN_ON)
+    service = AcService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_ac_power(
+            host="192.168.1.15",
+            air_conditioner_id=99,
+            request=power_request,
+            service=service,
+        )
+    assert "does not exist on host" in str(exception_info.value)
+
+
+@pytest.mark.asyncio
+async def test_set_ac_power_raises_control_error_on_unsupported_power(
+    mock_gateway,
+):
+    # Arrange
+    power_request = AcPowerRequest(power=AcPowerControl.TOGGLE)
+    service = AcService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_ac_power(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            request=power_request,
+            service=service,
+        )
+    assert "is not supported by AC" in str(exception_info.value)
 
 
 @pytest.mark.asyncio
@@ -193,6 +232,23 @@ async def test_set_ac_mode_success(mock_gateway):
 
 
 @pytest.mark.asyncio
+async def test_set_ac_mode_raises_control_error_on_unsupported_mode(mock_gateway):
+    # Arrange
+    mode_request = AcModeRequest(mode=AcMode.DRY)
+    service = AcService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_ac_mode(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            request=mode_request,
+            service=service,
+        )
+    assert "is not supported by AC" in str(exception_info.value)
+
+
+@pytest.mark.asyncio
 async def test_set_ac_fan_speed_success(mock_gateway):
     # Arrange
     fan_speed_request = AcFanSpeedRequest(fan_speed=AcFanSpeed.HIGH)
@@ -216,6 +272,25 @@ async def test_set_ac_fan_speed_success(mock_gateway):
 
 
 @pytest.mark.asyncio
+async def test_set_ac_fan_speed_raises_control_error_on_unsupported_speed(
+    mock_gateway,
+):
+    # Arrange
+    fan_speed_request = AcFanSpeedRequest(fan_speed=AcFanSpeed.TURBO)
+    service = AcService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_ac_fan_speed(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            request=fan_speed_request,
+            service=service,
+        )
+    assert "is not supported by AC" in str(exception_info.value)
+
+
+@pytest.mark.asyncio
 async def test_set_ac_temp_success(mock_gateway):
     # Arrange
     temp_request = AcTempRequest(temperature=24.0)
@@ -236,3 +311,20 @@ async def test_set_ac_temp_success(mock_gateway):
         "set_ac_temp",
         {"host": "192.168.1.15", "air_conditioner_id": 0, "temperature": 24.0},
     ) in mock_gateway.calls
+
+
+@pytest.mark.asyncio
+async def test_set_ac_temp_raises_control_error_on_out_of_bounds(mock_gateway):
+    # Arrange
+    temp_request = AcTempRequest(temperature=15.0)
+    service = AcService(gateway=mock_gateway)
+
+    # Act & Assert
+    with pytest.raises(AirtouchControlError) as exception_info:
+        await set_ac_temp(
+            host="192.168.1.15",
+            air_conditioner_id=0,
+            request=temp_request,
+            service=service,
+        )
+    assert "is out of bounds for AC" in str(exception_info.value)

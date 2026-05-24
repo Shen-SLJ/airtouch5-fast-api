@@ -50,8 +50,12 @@ async def set_zone_power(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_zone_power(
+    await service.set_zone_power(
         host, air_conditioner_id, zone_id, request.power
+    )
+    return ActionResponse(
+        status="success",
+        message=f"Zone {zone_id} power state set to {request.power}",
     )
 
 
@@ -78,8 +82,12 @@ async def set_zone_temp(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_zone_temp(
+    await service.set_zone_temp(
         host, air_conditioner_id, zone_id, request.temperature
+    )
+    return ActionResponse(
+        status="success",
+        message=f"Zone {zone_id} temperature set to {request.temperature}",
     )
 
 
@@ -106,6 +114,10 @@ async def set_zone_damper(
     Returns:
         ActionResponse: A status confirmation of the command execution.
     """
-    return await service.set_zone_damper(
+    await service.set_zone_damper(
         host, air_conditioner_id, zone_id, request.damper_percentage
+    )
+    return ActionResponse(
+        status="success",
+        message=f"Zone {zone_id} damper percentage set to {request.damper_percentage}",
     )

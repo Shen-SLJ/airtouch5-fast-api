@@ -17,4 +17,5 @@ async def get_airtouches(
     Returns:
         DiscoveryResponse: Model containing details of all discovered devices.
     """
-    return await service.discover_devices()
+    devices = await service.discover_devices()
+    return DiscoveryResponse(airtouch_devices=devices)

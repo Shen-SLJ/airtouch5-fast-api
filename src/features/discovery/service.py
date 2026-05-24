@@ -1,6 +1,7 @@
+from typing import List
 from fastapi import Depends
 from src.core.gateway import AirtouchGateway, get_gateway
-from src.core.models import DiscoveryResponse
+from src.core.models import DiscoveredDevice
 
 
 class DiscoveryService:
@@ -14,14 +15,11 @@ class DiscoveryService:
         """
         self._gateway = gateway
 
-    async def discover_devices(self) -> DiscoveryResponse:
+    async def discover_devices(self) -> List[DiscoveredDevice]:
         """Discovers all AirTouch consoles on the local network.
 
         Returns:
-            DiscoveryResponse: Model containing details of all discovered devices.
+            List[DiscoveredDevice]: List containing details of all discovered devices.
         """
         discovered_airtouches = await self._gateway.discover_devices()
-
-        return DiscoveryResponse(
-            airtouch_devices=[device for device in discovered_airtouches]
-        )
+        return list(discovered_airtouches)

@@ -174,3 +174,12 @@ class DiscoveryResponse(BaseModel):
 class SystemHealthResponse(BaseModel):
     """Health check response containing application runtime status."""
     status: str
+
+
+class AirtouchControlError(Exception):
+    """Exception raised when a control command to the AirTouch console fails validation or execution."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+

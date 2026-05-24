@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from typing import List, Optional, Type, TypeVar
 from enum import Enum
 
-from src.core.gateway.base import AirtouchGateway
+from src.core.gateway.base import IAirtouchGateway
 from src.core.models import (
     AirtouchConnectionError,
     DiscoveredDevice,
@@ -74,7 +74,7 @@ class AirtouchConnectionPool:
         self._connections.clear()
 
 
-class PyAirtouchGateway(AirtouchGateway):
+class PyAirtouchGateway(IAirtouchGateway):
     """Concrete implementation of AirtouchGateway utilizing the pyairtouch library.
 
     Coordinates device discovery, status mappings, and control commands using a stateless

@@ -1,13 +1,12 @@
 from typing import List
-from fastapi import Depends
-from src.core.gateway import AirtouchGateway, get_gateway
+from src.core.gateway import IAirtouchGateway
 from src.core.models import DiscoveredDevice
 
 
 class DiscoveryService:
     """Service handling hardware console discovery logic on the local network."""
 
-    def __init__(self, gateway: AirtouchGateway = Depends(get_gateway)) -> None:
+    def __init__(self, gateway: IAirtouchGateway) -> None:
         """Initializes the DiscoveryService with the hardware gateway dependency.
 
         Args:

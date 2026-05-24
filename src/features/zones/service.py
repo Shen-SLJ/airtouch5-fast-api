@@ -1,5 +1,4 @@
-from fastapi import Depends
-from src.core.gateway import AirtouchGateway, get_gateway
+from src.core.gateway import IAirtouchGateway
 from src.core.models import (
     ZonePowerState,
     ZoneStatus,
@@ -11,7 +10,7 @@ from src.core.models import (
 class ZoneService:
     """Service handling hardware console control and management for Zone units."""
 
-    def __init__(self, gateway: AirtouchGateway = Depends(get_gateway)) -> None:
+    def __init__(self, gateway: IAirtouchGateway) -> None:
         """Initializes the ZoneService with the hardware gateway dependency.
 
         Args:

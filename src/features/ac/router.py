@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from src.core.gateway import IAirtouchGateway, get_gateway
 from src.core.models import (
     AirtouchStatus,
     AirtouchCapabilities,
@@ -39,9 +40,14 @@ class AcTempRequest(BaseModel):
     temperature: float = Field(..., description="Target temperature value.")
 
 
+def get_ac_service(gateway: IAirtouchGateway = Depends(get_gateway)) -> AcService:
+    """Dependency provider function for AcService."""
+    return AcService(gateway)
+
+
 @router.post("/{host}/start", response_model=AirtouchPowerResponse)
 async def start_airtouch(
-    host: str, service: AcService = Depends()
+    host: str, service: AcService = Depends(get_ac_service)
 ) -> AirtouchPowerResponse:
     """Starts all Air Conditioner units on a given host console.
 
@@ -64,7 +70,7 @@ async def start_airtouch(
 
 @router.post("/{host}/stop", response_model=AirtouchPowerResponse)
 async def stop_airtouch(
-    host: str, service: AcService = Depends()
+    host: str, service: AcService = Depends(get_ac_service)
 ) -> AirtouchPowerResponse:
     """Stops all Air Conditioner units on a given host console.
 
@@ -87,7 +93,7 @@ async def stop_airtouch(
 
 @router.get("/{host}/status", response_model=AirtouchStatus)
 async def get_airtouch_status(
-    host: str, service: AcService = Depends()
+    host: str, service: AcService = Depends(get_ac_service)
 ) -> AirtouchStatus:
     """Retrieves the comprehensive status of all Air Conditioners and Zones on a host console.
 
@@ -103,7 +109,7 @@ async def get_airtouch_status(
 
 @router.get("/{host}/capabilities", response_model=AirtouchCapabilities)
 async def get_airtouch_capabilities(
-    host: str, service: AcService = Depends()
+    host: str, service: AcService = Depends(get_ac_service)
 ) -> AirtouchCapabilities:
     """Retrieves supported hardware capabilities of a host console.
 
@@ -125,7 +131,7 @@ async def set_ac_power(
     host: str,
     air_conditioner_id: int,
     request: AcPowerRequest,
-    service: AcService = Depends(),
+    service: AcService = Depends(get_ac_service),
 ) -> ActionResponse:
     """Sets the power state of a specific AC unit.
 
@@ -153,7 +159,7 @@ async def set_ac_mode(
     host: str,
     air_conditioner_id: int,
     request: AcModeRequest,
-    service: AcService = Depends(),
+    service: AcService = Depends(get_ac_service),
 ) -> ActionResponse:
     """Sets the operational mode of a specific AC unit.
 
@@ -181,7 +187,7 @@ async def set_ac_fan_speed(
     host: str,
     air_conditioner_id: int,
     request: AcFanSpeedRequest,
-    service: AcService = Depends(),
+    service: AcService = Depends(get_ac_service),
 ) -> ActionResponse:
     """Sets the fan speed of a specific AC unit.
 
@@ -209,7 +215,7 @@ async def set_ac_temp(
     host: str,
     air_conditioner_id: int,
     request: AcTempRequest,
-    service: AcService = Depends(),
+    service: AcService = Depends(get_ac_service),
 ) -> ActionResponse:
     """Sets the target temperature of a specific Air Conditioner unit.
 

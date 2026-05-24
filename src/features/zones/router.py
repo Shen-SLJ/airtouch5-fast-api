@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from src.core.gateway import IAirtouchGateway, get_gateway
 from src.core.models import ZonePowerState, ActionResponse
 from src.features.zones.service import ZoneService
 
@@ -27,6 +28,13 @@ class ZoneDamperRequest(BaseModel):
     )
 
 
+def get_zone_service(
+    gateway: IAirtouchGateway = Depends(get_gateway),
+) -> ZoneService:
+    """Dependency provider function for ZoneService."""
+    return ZoneService(gateway)
+
+
 @router.post(
     "/{host}/air-conditioner/{air_conditioner_id}/zones/{zone_id}/power",
     response_model=ActionResponse,
@@ -36,7 +44,7 @@ async def set_zone_power(
     air_conditioner_id: int,
     zone_id: int,
     request: ZonePowerRequest,
-    service: ZoneService = Depends(),
+    service: ZoneService = Depends(get_zone_service),
 ) -> ActionResponse:
     """Sets the operational power state of a specific zone.
 
@@ -68,7 +76,7 @@ async def set_zone_temp(
     air_conditioner_id: int,
     zone_id: int,
     request: ZoneTempRequest,
-    service: ZoneService = Depends(),
+    service: ZoneService = Depends(get_zone_service),
 ) -> ActionResponse:
     """Sets the target temperature of a specific temperature-controlled zone.
 
@@ -100,7 +108,7 @@ async def set_zone_damper(
     air_conditioner_id: int,
     zone_id: int,
     request: ZoneDamperRequest,
-    service: ZoneService = Depends(),
+    service: ZoneService = Depends(get_zone_service),
 ) -> ActionResponse:
     """Sets the damper opening percentage of a specific damper-controlled zone.
 

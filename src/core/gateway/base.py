@@ -14,7 +14,7 @@ from src.core.models import (
 )
 
 
-class AirtouchGateway(ABC):
+class IAirtouchGateway(ABC):
     """Abstract base class that serves as the hardware abstraction layer
 
     for interacting with Airtouch 5 consoles. All features communicate with
@@ -102,8 +102,8 @@ class AirtouchGateway(ABC):
         pass
 
 
-def get_gateway(request: Request) -> AirtouchGateway:
+def get_gateway(request: Request) -> IAirtouchGateway:
     """Dependency injector that retrieves the stateful gateway from the application state."""
-    gateway: AirtouchGateway = request.app.state.gateway
+    gateway: IAirtouchGateway = request.app.state.gateway
 
     return gateway

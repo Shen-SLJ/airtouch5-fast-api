@@ -1,6 +1,6 @@
 import pytest
 from typing import List
-from src.core.gateway import AirtouchGateway
+from src.core.gateway import IAirtouchGateway
 from src.core.models import (
     AirtouchConnectionError,
     DiscoveredDevice,
@@ -20,8 +20,8 @@ from src.core.models import (
     AcPowerActionResult,
 )
 
-class MockAirtouchGateway(AirtouchGateway):
-    """In-memory mock implementation of AirtouchGateway for zero-overhead unit testing."""
+class MockAirtouchGateway(IAirtouchGateway):
+    """In-memory mock implementation of IAirtouchGateway for zero-overhead unit testing."""
     def __init__(self) -> None:
         self.calls = []
         self.connected_val = True
